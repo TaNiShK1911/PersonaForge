@@ -1,45 +1,96 @@
 """
-PersonaForge — FastAPI Backend Entry Point (Reference)
-======================================================
-This is the production FastAPI backend target. The current deployment
-uses Next.js API routes (in src/app/api/) that mirror this design.
-Deploy this FastAPI service when you need horizontal scaling, dedicated
-ML workers, or polyglot Python-only libraries (PyTorch, DoWhy, CausalML).
+PersonaForge — FastAPI Backend Entry Point
+============================================
+Runnable production backend. Hard dependencies:
+  - PostgreSQL (verified at startup)
+  - Redis (verified at startup)
+  - At least one AI provider key (or template fallback is accepted)
+
+Run:
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 """
 
+import os
+import sys
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Response
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from app import __version__
 from app.config import settings
-from app.api import (
-    users, personas, analytics, bandit,
-    counterfactual, personalize, events, health, metrics,
-)
-from app.core.logging import setup_logging
+from app.core.logging import setup_logging, get_logger
 from app.core.monitoring import init_sentry, init_otel
+from app.core.security import SecurityHeadersMiddleware, RateLimitMiddleware
+from app.database.session import verify_database_connection, close_db
+from app.database.redis import init_redis, close_redis
+
+setup_logging()
+logger = get_logger(__name__)
+
+
+async def _verify_production_readiness() -> None:
+    """
+    Hard dependency check. Called at startup. Fails fast if any required
+    service is unreachable so the service never starts in a half-broken state.
+    """
+    logger.info(
+        "production_readiness_check",
+        environment=settings.environment,
+    )
+
+    # 1. Database
+    await verify_database_connection()
+
+    # 2. Redis
+    await init_redis()
+
+    # 3. Auth secret
+    if not settings.jwt_secret or settings.jwt_secret == "change-me":
+        if settings.environment == "production":
+            raise RuntimeError(
+                "JWT_SECRET must be set to a strong value in production"
+            )
+        logger.warning("jwt_secret_is_default_set_dev_only")
+
+    # 4. AI providers (template fallback is accepted)
+    if not any([settings.anthropic_api_key, settings.gemini_api_key, settings.openai_api_key]):
+        logger.warning("no_ai_provider_keys_template_fallback_active")
+
+    logger.info("production_readiness_ok")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup + shutdown hooks."""
-    setup_logging()
+    logger.info("startup_begin", version=__version__, env=settings.environment)
+    try:
+        await _verify_production_readiness()
+    except Exception as e:
+        logger.error("startup_failed", error=str(e))
+        # Hard fail — exit so the orchestrator (Docker/k8s) restarts us
+        sys.exit(1)
+
     init_sentry()
     init_otel(app)
-    # Start background schedulers (Celery beat in production)
+
     from app.services.event_pipeline import start_schedulers
     start_schedulers()
+
+    logger.info("startup_complete")
     yield
-    # Cleanup
-    from app.database.session import close_db
+
+    logger.info("shutdown_begin")
     await close_db()
+    await close_redis()
+    logger.info("shutdown_complete")
 
 
 app = FastAPI(
     title="PersonaForge API",
-    version="1.0.0",
+    version=__version__,
     description="Causal Micro-Persona Engine — production backend",
     lifespan=lifespan,
     docs_url="/docs",
@@ -56,19 +107,15 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Request-ID"],
 )
-
-# Security headers middleware
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response: Response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    return response
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
 # ---------- Routers ----------
+from app.api import (
+    users, personas, analytics, bandit,
+    counterfactual, personalize, events, health, metrics,
+)
+
 app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(personas.router, prefix="/personas", tags=["personas"])
@@ -79,7 +126,7 @@ app.include_router(personalize.router, prefix="/personalize", tags=["personaliza
 app.include_router(events.router, prefix="/events", tags=["events"])
 app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
 
-# Prometheus metrics
+# Prometheus instrumentation
 Instrumentator().instrument(app).expose(app, endpoint="/metrics/prometheus")
 
 
@@ -87,10 +134,10 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics/prometheus")
 async def root():
     return {
         "name": "PersonaForge API",
-        "version": "1.0.0",
+        "version": __version__,
         "docs": "/docs",
         "health": "/health",
-        "metrics": "/metrics",
+        "metrics": "/metrics/prometheus",
     }
 
 
@@ -99,7 +146,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=int(os.environ.get("PORT", "8000")),
         reload=settings.debug,
-        workers=4 if not settings.debug else 1,
+        workers=1 if settings.debug else 4,
     )

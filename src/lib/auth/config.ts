@@ -10,15 +10,10 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
+import EmailProvider from "next-auth/providers/email";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import { authLogger } from "@/lib/monitoring/logger";
-
-// EmailProvider is omitted by default because it requires nodemailer.
-// To enable email magic link auth:
-//   1. bun add nodemailer
-//   2. Uncomment the import and provider block below
-// import EmailProvider from "next-auth/providers/email";
 
 const DEMO_USERS = [
   { email: "admin@personaforge.dev", name: "Demo Admin", role: "admin" as const },
@@ -45,16 +40,16 @@ export const authOptions: NextAuthOptions = {
           }),
         ]
       : []),
-    // Email magic link — requires nodemailer + SMTP env vars.
-    // Uncomment after installing nodemailer (see import note above).
-    // ...(process.env.EMAIL_SERVER && process.env.EMAIL_FROM
-    //   ? [
-    //       EmailProvider({
-    //         server: process.env.EMAIL_SERVER!,
-    //         from: process.env.EMAIL_FROM!,
-    //       }),
-    //     ]
-    //   : []),
+    // Email magic link — enabled when SMTP env vars are present.
+    // Requires nodemailer (installed) + EMAIL_SERVER + EMAIL_FROM env vars.
+    ...(process.env.EMAIL_SERVER && process.env.EMAIL_FROM
+      ? [
+          EmailProvider({
+            server: process.env.EMAIL_SERVER!,
+            from: process.env.EMAIL_FROM!,
+          }),
+        ]
+      : []),
     // Demo credentials provider — always available for hackathon/demo
     CredentialsProvider({
       name: "Demo",

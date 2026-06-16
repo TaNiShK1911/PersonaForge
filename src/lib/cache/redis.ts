@@ -1,9 +1,11 @@
 // ============================================================
-// PersonaForge — Cache Abstraction (Redis or in-memory)
+// PersonaForge — Cache Abstraction (Redis mandatory in prod)
 // ============================================================
-// In production: connect to REDIS_URL using ioredis.
-// In dev / when Redis is unavailable: fall back to an in-memory
-// LRU cache (process-scoped, survives HMR via globalThis).
+// Production: REQUIRES REDIS_URL + ioredis. If Redis is unreachable
+// the cache fails hard and API routes return 503.
+//
+// Development: Falls back to in-memory cache when REDIS_URL is missing
+// (logged as a warning, not fatal).
 // ============================================================
 
 interface CacheEntry<T> {
@@ -30,7 +32,6 @@ class InMemoryCache {
   }
 
   async set<T>(key: string, value: T, ttlSec?: number): Promise<void> {
-    // Evict oldest if at capacity
     if (this.store.size >= this.maxEntries) {
       const firstKey = this.store.keys().next().value;
       if (firstKey) this.store.delete(firstKey);
@@ -72,35 +73,36 @@ class InMemoryCache {
   }
 }
 
-// ---------- Redis client (lazy, optional) ----------
+// ---------- Redis client (mandatory in production) ----------
 
 let redisClient: any = null;
-let redisAvailable: boolean | null = null;
+let redisInitAttempted = false;
+let redisInitError: Error | null = null;
 
 async function getRedisClient(): Promise<any | null> {
-  if (redisClient !== null) return redisClient;
+  if (redisClient) return redisClient;
+  if (redisInitAttempted && redisInitError) throw redisInitError;
+  if (redisInitAttempted) return null;
+
+  redisInitAttempted = true;
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    redisClient = null;
+    const err = new Error("REDIS_URL not set");
+    redisInitError = err;
+    if (process.env.NODE_ENV === "production") {
+      // Hard fail in production
+      throw err;
+    }
+    // Dev: warn and fall back
+    console.warn("[cache] REDIS_URL not set — using in-memory fallback (dev only)");
     return null;
   }
+
   try {
-    // Dynamic import — fully obfuscated to prevent webpack static analysis.
-    // The ioredis package is optional; we install it only when Redis is needed.
+    // Dynamic import — obfuscated so webpack doesn't try to resolve at build time
     const moduleName = ["io", "redis"].join("");
     const dynamicImport = new Function("m", "return import(m)") as (m: string) => Promise<any>;
-    let mod: any = null;
-    try {
-      mod = await dynamicImport(moduleName);
-    } catch {
-      mod = null;
-    }
-    if (!mod) {
-      console.warn("[cache] Redis module not installed, using in-memory fallback");
-      redisClient = null;
-      redisAvailable = false;
-      return null;
-    }
+    const mod = await dynamicImport(moduleName);
     const Redis = mod.Redis ?? mod.default;
     redisClient = new Redis(redisUrl, {
       maxRetriesPerRequest: 2,
@@ -110,17 +112,21 @@ async function getRedisClient(): Promise<any | null> {
     });
     redisClient.on("error", (err: Error) => {
       console.warn("[cache] Redis error:", err.message);
-      redisAvailable = false;
     });
-    redisAvailable = true;
+    // Verify connectivity
+    await redisClient.ping();
     return redisClient;
   } catch (err) {
+    redisInitError = err as Error;
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        `Redis is a hard dependency in production. Connection failed: ${(err as Error).message}`
+      );
+    }
     console.warn(
-      "[cache] Redis init failed, falling back to in-memory:",
+      `[cache] Redis unavailable in dev, using in-memory fallback:`,
       (err as Error).message
     );
-    redisClient = null;
-    redisAvailable = false;
     return null;
   }
 }
@@ -133,76 +139,70 @@ class UnifiedCache {
   );
 
   async get<T>(key: string): Promise<T | null> {
-    // Try Redis first (if available)
-    const redis = await getRedisClient();
-    if (redis && redisAvailable) {
-      try {
+    try {
+      const redis = await getRedisClient();
+      if (redis) {
         const raw = await redis.get(key);
         if (raw) return JSON.parse(raw) as T;
-      } catch (err) {
-        console.warn("[cache] Redis get failed:", (err as Error).message);
       }
+    } catch (err) {
+      if (process.env.NODE_ENV === "production") throw err;
+      // Dev: fall through to memory
     }
-    // Fallback to in-memory
     return this.memory.get<T>(key);
   }
 
   async set<T>(key: string, value: T, ttlSec?: number): Promise<void> {
-    // Write to both for redundancy
-    const redis = await getRedisClient();
-    if (redis && redisAvailable) {
-      try {
+    try {
+      const redis = await getRedisClient();
+      if (redis) {
         if (ttlSec) {
           await redis.set(key, JSON.stringify(value), "EX", ttlSec);
         } else {
           await redis.set(key, JSON.stringify(value));
         }
         return;
-      } catch (err) {
-        console.warn("[cache] Redis set failed:", (err as Error).message);
       }
+    } catch (err) {
+      if (process.env.NODE_ENV === "production") throw err;
     }
     await this.memory.set(key, value, ttlSec);
   }
 
   async del(key: string): Promise<void> {
-    const redis = await getRedisClient();
-    if (redis && redisAvailable) {
-      try {
-        await redis.del(key);
-      } catch {
-        /* ignore */
-      }
+    try {
+      const redis = await getRedisClient();
+      if (redis) await redis.del(key);
+    } catch (err) {
+      if (process.env.NODE_ENV === "production") throw err;
     }
     await this.memory.del(key);
   }
 
   async delPattern(pattern: string): Promise<number> {
     let count = 0;
-    const redis = await getRedisClient();
-    if (redis && redisAvailable) {
-      try {
+    try {
+      const redis = await getRedisClient();
+      if (redis) {
         const keys = await redis.keys(pattern);
         if (keys.length > 0) {
           await redis.del(...keys);
           count += keys.length;
         }
-      } catch {
-        /* ignore */
       }
+    } catch (err) {
+      if (process.env.NODE_ENV === "production") throw err;
     }
     count += await this.memory.delPattern(pattern);
     return count;
   }
 
   async flush(): Promise<void> {
-    const redis = await getRedisClient();
-    if (redis && redisAvailable) {
-      try {
-        await redis.flushdb();
-      } catch {
-        /* ignore */
-      }
+    try {
+      const redis = await getRedisClient();
+      if (redis) await redis.flushdb();
+    } catch (err) {
+      if (process.env.NODE_ENV === "production") throw err;
     }
     await this.memory.flush();
   }
@@ -212,15 +212,15 @@ class UnifiedCache {
     memory: boolean;
     memorySize: number;
   }> {
-    const redis = await getRedisClient();
     let redisHealthy = false;
-    if (redis && redisAvailable) {
-      try {
+    try {
+      const redis = await getRedisClient();
+      if (redis) {
         const pong = await redis.ping();
         redisHealthy = pong === "PONG";
-      } catch {
-        redisHealthy = false;
       }
+    } catch {
+      redisHealthy = false;
     }
     return {
       redis: redisHealthy,
@@ -230,7 +230,6 @@ class UnifiedCache {
   }
 }
 
-// Singleton (preserved across HMR via globalThis)
 const globalForCache = globalThis as unknown as { __personaForgeCache?: UnifiedCache };
 
 export const cache: UnifiedCache =

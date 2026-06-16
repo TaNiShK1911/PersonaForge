@@ -3,24 +3,26 @@ PersonaForge — App Configuration (Pydantic Settings)
 =====================================================
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Environment
     debug: bool = False
     environment: str = "development"
     log_level: str = "info"
+    app_version: str = "1.0.0"
 
-    # Database
+    # Database (hard dependency)
     database_url: str = "postgresql://forge:forge_dev@localhost:5432/personaforge"
     db_pool_size: int = 10
     db_max_overflow: int = 20
 
-    # Redis
+    # Redis (hard dependency in production)
     redis_url: str = "redis://localhost:6379"
 
     # Auth
