@@ -1,8 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ============================================================
+// PersonaForge — Production Prisma Schema
+// ============================================================
+// 12 domain entities with relationships, indexes, foreign keys,
+// timestamps, and soft deletes. Designed for PostgreSQL in
+// production; SQLite-compatible for local dev.
+// ============================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +15,387 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ----------------------------------------------------------
+// 1. User — customers whose behavior we model
+// ----------------------------------------------------------
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  externalId   String?  @unique                          // for upstream identity sync
+  email        String?  @unique
+  name         String?
+  personaKind  String?                                   // FK to Persona.kind (string)
+  features     String                                    // JSON: UserFeatures
+  converted    Boolean  @default(false)
+  revenue      Float    @default(0)
+  sessions     Int      @default(0)
+  deletedAt    DateTime?                                 // soft delete
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  persona      Persona?               @relation(fields: [personaKind], references: [kind])
+  events       Event[]
+  userSessions UserSession[]
+  recommendations Recommendation[]
+  experiments  CounterfactualExperiment[]
+
+  @@index([personaKind])
+  @@index([converted])
+  @@index([createdAt])
+  @@index([deletedAt])
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ----------------------------------------------------------
+// 2. Persona — micro-persona cluster (dynamic)
+// ----------------------------------------------------------
+model Persona {
+  id             String   @id @default(cuid())
+  kind           String   @unique                        // e.g. "price_sensitive"
+  name           String                                   // human label
+  tagline        String?
+  traits         String                                   // JSON: string[]
+  embedding      String                                   // JSON: number[]
+  confidence     Float    @default(0)
+  memberCount    Int      @default(0)
+  avgConversion  Float    @default(0)
+  avgRevenue     Float    @default(0)
+  topFeatures    String?                                  // JSON: {feature, value}[]
+  color          String?
+  emoji          String?
+  deletedAt      DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users          User[]
+
+  @@index([deletedAt])
+}
+
+// ----------------------------------------------------------
+// 3. Event — single user behavior event
+// ----------------------------------------------------------
+model Event {
+  id           String   @id @default(cuid())
+  userId       String
+  type         String                                    // page_view | search | add_to_cart | ...
+  timestamp    BigInt
+  pageDepth    Int      @default(0)
+  productId    String?
+  query        String?
+  scrollPct    Int?
+  dwellSec     Int?
+  price        Float?
+  discountSeen     Boolean @default(false)
+  socialProofSeen  Boolean @default(false)
+  reviewSeen       Boolean @default(false)
+  urgencySeen      Boolean @default(false)
+  properties   String?                                   // JSON: catch-all
+
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([timestamp])
+  @@index([userId, timestamp])
+  @@index([discountSeen])
+  @@index([socialProofSeen])
+  @@index([reviewSeen])
+  @@index([urgencySeen])
+}
+
+// ----------------------------------------------------------
+// 4. UserSession — grouped user browsing activity
+// ----------------------------------------------------------
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  durationSec  Int      @default(0)
+  eventCount   Int      @default(0)
+  converted    Boolean  @default(false)
+  deletedAt    DateTime?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([startedAt])
+  @@index([converted])
+}
+
+// ----------------------------------------------------------
+// 5. Treatment — catalog of marketing treatments
+// ----------------------------------------------------------
+model Treatment {
+  id           String   @id @default(cuid())
+  key          String   @unique                          // discount | social_proof | product_reviews | urgency_messaging
+  label        String
+  description  String
+  color        String?
+  isActive     Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  experiments  CounterfactualExperiment[]
+}
+
+// ----------------------------------------------------------
+// 6. Recommendation — output of personalization engine
+// ----------------------------------------------------------
+model Recommendation {
+  id           String   @id @default(cuid())
+  userId       String
+  productId    String
+  score        Float
+  reason       String?
+  personaKind  String?
+  causalDrivers String?                                  // JSON: {factor, impact}[]
+  confidence   Float    @default(0)
+  servedAt     DateTime?
+  clickedAt    DateTime?
+  convertedAt  DateTime?
+  status       String   @default("pending")              // pending | served | clicked | converted | dismissed
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  explanation  Explanation?
+  content      GeneratedContent?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([personaKind])
+}
+
+// ----------------------------------------------------------
+// 7. CounterfactualExperiment — what-if scenario run
+// ----------------------------------------------------------
+model CounterfactualExperiment {
+  id           String   @id @default(cuid())
+  userId       String
+  label        String
+  description  String?
+  treatmentKey String                                   // primary treatment tested
+  treatments   String                                    // JSON: Record<TreatmentKey, boolean>
+  baselineProbability Float
+  predictedProbability Float
+  upliftPct    Float
+  estimatedRevenue Float
+  isWinner     Boolean  @default(false)
+  isCustom     Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  treatment    Treatment @relation(fields: [treatmentKey], references: [key])
+
+  @@index([userId])
+  @@index([treatmentKey])
+  @@index([isWinner])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------
+// 8. BanditVariant — multi-armed bandit arm config
+// ----------------------------------------------------------
+model BanditVariant {
+  id           String   @id @default(cuid())
+  armKey       String   @unique                          // discount | urgency | social_proof
+  label        String
+  description  String?
+  color        String?
+  alpha        Float    @default(1)                      // Beta posterior
+  beta         Float    @default(1)
+  pulls        Int      @default(0)
+  rewards      Int      @default(0)
+  observedRate Float    @default(0)
+  trueRate     Float?                                   // for simulation only
+  isActive     Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  observations BanditObservation[]
+
+  @@index([isActive])
+  @@index([observedRate])
+}
+
+// ----------------------------------------------------------
+// 9. BanditObservation — single pull of a bandit arm
+// ----------------------------------------------------------
+model BanditObservation {
+  id              String   @id @default(cuid())
+  variantId       String
+  round           Int
+  reward          Boolean  @default(false)
+  cumulativeReward Float  @default(0)
+  cumulativeOptimal Float @default(0)
+  regret          Float    @default(0)
+  explorationRate Float    @default(0)
+  sampledTheta    Float    @default(0.5)
+
+  createdAt       DateTime @default(now())
+
+  variant         BanditVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId])
+  @@index([round])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------
+// 10. GeneratedContent — output of personalization agent
+// ----------------------------------------------------------
+model GeneratedContent {
+  id              String   @id @default(cuid())
+  recommendationId String  @unique
+  personaKind     String
+  provider        String                                   // claude | gemini | openai | template
+  headline        String
+  emailSubject    String
+  emailBody       String
+  adCopy          String
+  pushNotification String
+  cta             String
+  productRanking  String                                   // JSON: {productId, score, reason}[]
+  tokensUsed      Int      @default(0)
+  latencyMs       Int      @default(0)
+  cached          Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+
+  recommendation  Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  @@index([personaKind])
+  @@index([provider])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------
+// 11. Explanation — explainability layer output
+// ----------------------------------------------------------
+model Explanation {
+  id                  String   @id @default(cuid())
+  recommendationId    String   @unique
+  userId              String
+  personaDriver       String
+  causalDrivers       String                                    // JSON
+  counterfactualNote  String
+  similarCampaignUplift Int
+  confidence          Float
+  fullText            String
+
+  createdAt           DateTime @default(now())
+
+  recommendation      Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------
+// 12. AnalyticsSnapshot — pre-aggregated metrics
+// ----------------------------------------------------------
+model AnalyticsSnapshot {
+  id              String   @id @default(cuid())
+  date            DateTime
+  granity         String                                   // hour | day | week
+  activeUsers     Int      @default(0)
+  totalUsers      Int      @default(0)
+  convertedUsers  Int      @default(0)
+  conversionRate  Float    @default(0)
+  revenue         Float    @default(0)
+  avgOrderValue   Float    @default(0)
+  events          Int      @default(0)
+  banditBestArm   String?
+  banditRegret    Float?
+  banditRounds    Int?
+  personaDistribution String?                              // JSON
+
+  createdAt       DateTime @default(now())
+
+  @@unique([date, granity])
+  @@index([date])
+  @@index([granity])
+}
+
+// ----------------------------------------------------------
+// 13. Account — admin/analyst/viewer login (NextAuth users)
+// ----------------------------------------------------------
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ----------------------------------------------------------
+// 14. AuthUser — dashboard users (admins, analysts, viewers)
+// ----------------------------------------------------------
+model AuthUser {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("viewer")               // admin | analyst | viewer
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+
+  @@index([role])
+  @@index([email])
 }

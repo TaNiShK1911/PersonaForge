@@ -173,6 +173,7 @@ function permutationPValue(
     const permuted = users.map((u) => ({
       user: u,
       treated: getUserTreatmentStatus(u, treatment),
+      converted: u.converted,
     }));
     // permute treatment labels (within strata)
     const strata = new Map<string, boolean[]>();

@@ -115,8 +115,8 @@ export function stepBandit(state: BanditState): BanditState {
   const optimalArm = (Object.keys(TRUE_RATES) as BanditArm[]).reduce((best, a) =>
     TRUE_RATES[a] > TRUE_RATES[best] ? a : best
   );
-  const prevOptimal = state.history.length;
-  const cumulativeOptimal = prevOptimal + TRUE_RATES[optimalArm];
+  // Cumulative optimal = (rounds so far including this one) × optimal arm's true rate
+  const cumulativeOptimal = (state.history.length + 1) * TRUE_RATES[optimalArm];
   const regret = cumulativeOptimal - cumulativeReward;
 
   // exploration = pulling a non-optimal-observed arm
