@@ -127,6 +127,8 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - name: Ensure Playwright is installed
+        run: bun add -d @playwright/test playwright || true
       - run: bunx playwright install --with-deps chromium
       - run: bun run db:push
       - run: bunx playwright test --pass-with-no-tests
