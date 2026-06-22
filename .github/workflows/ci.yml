@@ -44,6 +44,10 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - name: Dump tsconfig
+        run: cat tsconfig.json
+      - name: Show tsc resolved config
+        run: bunx tsc --showConfig
       - run: bun run typecheck
 
   unit-tests:
