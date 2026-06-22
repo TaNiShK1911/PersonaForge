@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       name: personaRow.name,
       tagline: personaRow.tagline ?? "",
       color: personaRow.color ?? "#a78bfa",
-      emoji: personaRow.emoji ?? "🎯",
+      emoji: personaRow.emoji ?? "",
     };
     const persona: Persona = {
       persona_name: personaRow.name,

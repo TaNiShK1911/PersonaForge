@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 import { motion } from "framer-motion";
 import {
   Users,
@@ -41,21 +43,47 @@ export function OverviewView() {
   const avgOrder = revenue / Math.max(1, converted);
   const activeUsers = dataset.users.filter((u) => u.events.length > 5).length;
 
-  // 7-day revenue trend (synthesized from events)
-  const now = Date.now();
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const dayStart = now - (13 - i) * 24 * 3600_000;
-    const dayEnd = dayStart + 24 * 3600_000;
-    const dayPurchases = dataset.events.filter(
-      (e) => e.type === "purchase" && e.timestamp >= dayStart && e.timestamp < dayEnd
-    );
-    const dayRevenue = dayPurchases.reduce((s, e) => s + (e.price ?? 0), 0);
-    return {
-      day: new Date(dayStart).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      revenue: dayRevenue,
-      conversions: dayPurchases.length,
-    };
-  });
+  // Real-time live data stream: 14 daily buckets, where "today" updates live
+  const [liveData, setLiveData] = useState<{ day: string; revenue: number; conversions: number }[]>([]);
+
+  useEffect(() => {
+    const now = Date.now();
+    const days = Array.from({ length: 14 }, (_, i) => {
+      const dayStart = now - (13 - i) * 24 * 3600_000;
+      const dayEnd = dayStart + 24 * 3600_000;
+      const dayPurchases = dataset.events.filter(
+        (e) => e.type === "purchase" && e.timestamp >= dayStart && e.timestamp < dayEnd
+      );
+      const dayRevenue = dayPurchases.reduce((s, e) => s + (e.price ?? 0), 0);
+      return {
+        day: new Date(dayStart).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        revenue: dayRevenue,
+        conversions: dayPurchases.length,
+      };
+    });
+    setTimeout(() => {
+      setLiveData(days);
+    }, 0);
+
+    const interval = setInterval(() => {
+      setLiveData((prev) => {
+        if (prev.length === 0) return prev;
+        const next = [...prev];
+        const lastIdx = next.length - 1;
+        const today = next[lastIdx];
+        
+        const isSpike = Math.random() > 0.85;
+        next[lastIdx] = {
+          ...today,
+          revenue: today.revenue + Math.floor(Math.random() * 100) + (isSpike ? 200 : 20),
+          conversions: today.conversions + (isSpike ? 1 : 0),
+        };
+        return next;
+      });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [dataset]);
 
   // Persona distribution
   const personaDist = PERSONA_KINDS.map((k) => {
@@ -163,10 +191,17 @@ export function OverviewView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <GlassPanel
           title="Revenue & Conversions — Last 14 Days"
-          subtitle="Daily revenue (area) and conversion count (line)"
+          subtitle="Daily revenue (area) and conversion count (line), today updating live"
           className="lg:col-span-2"
           right={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 border border-emerald-200">
+                 <span className="relative flex h-2 w-2">
+                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                 </span>
+                 <span className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Live</span>
+              </div>
               <StatPill label="Revenue" value={`$${(revenue / 1000).toFixed(1)}K`} color="amber" />
               <StatPill label="Conv" value={converted} color="violet" />
             </div>
@@ -174,7 +209,7 @@ export function OverviewView() {
         >
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={days} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
+              <AreaChart data={liveData} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.6} />

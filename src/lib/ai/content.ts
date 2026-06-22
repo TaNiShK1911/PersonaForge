@@ -53,14 +53,14 @@ interface Copy {
 const COPY_TEMPLATES: Record<PersonaKind, Copy> = {
   price_sensitive: {
     headline: "Flash Sale: Save 30% Today Only",
-    emailSubject: "🎯 Your exclusive 30% discount expires tonight",
+    emailSubject: "Your exclusive 30% discount expires tonight",
     emailBody:
       "Hi {name},\n\nWe noticed you've been comparing options — smart move. " +
       "Here's our best offer of the week: 30% off your wishlist items, today only. " +
       "Free shipping on orders over $35.\n\nYour basket is waiting — lock in the price before midnight.\n\n— The PersonaForge Team",
     adCopy:
       "Compare all you want — then save 30%. Lowest price guaranteed. Ends tonight.",
-    pushNotification: "⚡ 30% off your wishlist — ends in 4 hours",
+    pushNotification: "30% off your wishlist — ends in 4 hours",
     cta: "Claim 30% Discount",
   },
   brand_loyal: {
@@ -72,23 +72,23 @@ const COPY_TEMPLATES: Record<PersonaKind, Copy> = {
       "Thank you for being part of the family.\n\n— The PersonaForge Team",
     adCopy:
       "Members get first access. Stay loyal, stay ahead — new collection just dropped.",
-    pushNotification: "✨ New arrivals from your favorite brands",
+    pushNotification: "New arrivals from your favorite brands",
     cta: "Explore New Collection",
   },
   impulse_buyer: {
     headline: "Only 3 Left — Yours in 2 Hours",
-    emailSubject: "🚨 Almost sold out: your item is in someone else's cart",
+    emailSubject: "Almost sold out: your item is in someone else's cart",
     emailBody:
       "Hi {name},\n\nQuick heads-up — the item you viewed is almost gone. " +
       "Order in the next 2 hours and we'll deliver it tomorrow. No second-guessing needed — " +
       "free 30-day returns if you change your mind.\n\nThe clock is ticking.\n\n— The PersonaForge Team",
     adCopy: "Only 3 left. Order in 2h → ships tomorrow. Don't miss it.",
-    pushNotification: "⏰ Only 3 left in stock — order now",
+    pushNotification: "Only 3 left in stock — order now",
     cta: "Buy Now — 2hr Delivery",
   },
   research_oriented: {
     headline: "Read the Reviews. Then Decide.",
-    emailSubject: "📊 1,247 verified reviews for the item you compared",
+    emailSubject: "1,247 verified reviews for the item you compared",
     emailBody:
       "Hi {name},\n\nYou're a thorough researcher — we love that. " +
       "We've compiled an in-depth review summary for the products you compared, " +
@@ -96,7 +96,7 @@ const COPY_TEMPLATES: Record<PersonaKind, Copy> = {
       "Take your time. We're here when you're ready.\n\n— The PersonaForge Team",
     adCopy:
       "1,247 verified reviews. Side-by-side specs. Make the informed choice.",
-    pushNotification: "📋 Your comparison report is ready",
+    pushNotification: "Your comparison report is ready",
     cta: "Read Full Review Report",
   },
   luxury_seeker: {
@@ -107,18 +107,18 @@ const COPY_TEMPLATES: Record<PersonaKind, Copy> = {
       "handcrafted, limited to 200 pieces worldwide. No discounts, just craft.\n\n" +
       "Your personal stylist is available by appointment.\n\n— The PersonaForge Atelier",
     adCopy: "Limited to 200 pieces. Handcrafted. No discounts — just craft.",
-    pushNotification: "💎 Premier Collection — by invitation",
+    pushNotification: "Premier Collection — by invitation",
     cta: "Request Private Viewing",
   },
   trend_follower: {
     headline: "Trending Now: 12,400 Bought This Week",
-    emailSubject: "🔥 This is going viral — see what everyone's buying",
+    emailSubject: "This is going viral — see what everyone's buying",
     emailBody:
       "Hi {name},\n\nThis week's viral drop just hit 12,400 orders and counting. " +
       "Featured in 3 trending TikToks and worn by 8 creators you follow.\n\n" +
       "Restock expected in 2 weeks — get it before it spikes again.\n\n— The PersonaForge Team",
     adCopy: "12,400 bought this week. Trending in 8 creators' feeds. Get it before it spikes.",
-    pushNotification: "🔥 Trending now — 12,400 bought this week",
+    pushNotification: "Trending now — 12,400 bought this week",
     cta: "Shop the Viral Drop",
   },
 };

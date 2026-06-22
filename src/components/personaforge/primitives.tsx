@@ -15,17 +15,17 @@ interface KpiCardProps {
 }
 
 const ACCENTS: Record<NonNullable<KpiCardProps["accent"]>, string> = {
-  violet: "from-violet-500/15 to-violet-500/0 border-violet-500/30",
-  fuchsia: "from-fuchsia-500/15 to-fuchsia-500/0 border-fuchsia-500/30",
-  emerald: "from-emerald-500/15 to-emerald-500/0 border-emerald-500/30",
-  amber: "from-amber-500/15 to-amber-500/0 border-amber-500/30",
-  rose: "from-rose-500/15 to-rose-500/0 border-rose-500/30",
-  cyan: "from-cyan-500/15 to-cyan-500/0 border-cyan-500/30",
+  violet: "bg-white border-violet-200",
+  fuchsia: "bg-white border-fuchsia-200",
+  emerald: "bg-white border-emerald-200",
+  amber: "bg-white border-amber-200",
+  rose: "bg-white border-rose-200",
+  cyan: "bg-white border-cyan-200",
 };
 
 const TREND_COLORS = {
-  up: "text-emerald-400",
-  down: "text-rose-400",
+  up: "text-emerald-600",
+  down: "text-rose-600",
   flat: "text-muted-foreground",
 };
 
@@ -44,7 +44,7 @@ export function KpiCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
       className={cn(
-        "relative overflow-hidden rounded-xl p-5 glass border bg-gradient-to-br",
+        "relative overflow-hidden p-5 card-base",
         ACCENTS[accent]
       )}
     >
@@ -85,7 +85,7 @@ export function GlassPanel({
   right?: ReactNode;
 }) {
   return (
-    <div className={cn("rounded-xl glass p-5", className)}>
+    <div className={cn("card-base p-5", className)}>
       {(title || right) && (
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -114,12 +114,12 @@ export function StatPill({
   color?: "violet" | "emerald" | "rose" | "amber" | "cyan" | "fuchsia";
 }) {
   const colors = {
-    violet: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-    emerald: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    rose: "bg-rose-500/15 text-rose-300 border-rose-500/30",
-    amber: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-    cyan: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-    fuchsia: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30",
+    violet: "bg-violet-100 text-violet-700 border-violet-200",
+    emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    rose: "bg-rose-100 text-rose-700 border-rose-200",
+    amber: "bg-amber-100 text-amber-700 border-amber-200",
+    cyan: "bg-cyan-100 text-cyan-700 border-cyan-200",
+    fuchsia: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
   };
   return (
     <div

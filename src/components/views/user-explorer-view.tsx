@@ -366,10 +366,10 @@ function EventRow({ event, index }: { event: BehaviorEvent; index: number }) {
           {event.scrollPct !== undefined && <span>Scroll: <span className="text-foreground/80">{event.scrollPct}%</span> · </span>}
           {event.dwellSec !== undefined && <span>Dwell: <span className="text-foreground/80">{event.dwellSec}s</span> · </span>}
           {event.price !== undefined && <span>Price: <span className="text-foreground/80">${event.price}</span> · </span>}
-          {event.discountSeen && <span className="text-emerald-400">🏷️ discount </span>}
-          {event.socialProofSeen && <span className="text-cyan-400">👥 social-proof </span>}
-          {event.reviewSeen && <span className="text-amber-400">⭐ review </span>}
-          {event.urgencySeen && <span className="text-rose-400">⏰ urgency </span>}
+          {event.discountSeen && <span className="text-emerald-600 font-medium bg-emerald-50 px-1 rounded">discount </span>}
+          {event.socialProofSeen && <span className="text-cyan-600 font-medium bg-cyan-50 px-1 rounded">social-proof </span>}
+          {event.reviewSeen && <span className="text-amber-600 font-medium bg-amber-50 px-1 rounded">review </span>}
+          {event.urgencySeen && <span className="text-rose-600 font-medium bg-rose-50 px-1 rounded">urgency </span>}
         </div>
       </div>
     </motion.div>

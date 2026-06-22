@@ -27,13 +27,13 @@ export const PERSONA_META: Record<
     name: "Bargain Hunter",
     tagline: "Compares prices, responds to discounts, long decision cycles",
     color: "#34d399", // emerald
-    emoji: "🪙",
+    emoji: "🏷️",
   },
   brand_loyal: {
     name: "Brand Loyalist",
     tagline: "Returns to familiar brands, low search diversity",
     color: "#a78bfa", // violet
-    emoji: "🛡️",
+    emoji: "💖",
   },
   impulse_buyer: {
     name: "Impulse Buyer",
@@ -45,7 +45,7 @@ export const PERSONA_META: Record<
     name: "Deep Researcher",
     tagline: "Long reading sessions, many comparisons, careful buyer",
     color: "#22d3ee", // cyan
-    emoji: "🔬",
+    emoji: "🔍",
   },
   luxury_seeker: {
     name: "Luxury Seeker",
@@ -57,7 +57,7 @@ export const PERSONA_META: Record<
     name: "Trend Follower",
     tagline: "New arrivals, social signals, viral products",
     color: "#e879f9", // fuchsia
-    emoji: "🔥",
+    emoji: "📈",
   },
 };
 
@@ -104,6 +104,7 @@ export interface User {
   converted: boolean;
   revenue: number;
   sessions: number;
+  consentLevel?: "none" | "basic" | "full";
 }
 
 export interface UserFeatures {

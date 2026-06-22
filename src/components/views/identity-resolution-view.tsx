@@ -40,7 +40,7 @@ interface IdentityGraph {
   resolvedCount: number;
 }
 
-const CHANNEL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const CHANNEL_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   web: Globe,
   app: Smartphone,
   email: Mail,
@@ -71,20 +71,28 @@ export function IdentityResolutionView() {
   // Fetch identity graph
   useEffect(() => {
     if (!userId) return;
-    setLoading(true);
-    fetch(`/api/identity?userId=${userId}`)
-      .then((res) => {
+    let isMounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/identity?userId=${userId}`);
         if (!res.ok) throw new Error("Failed to fetch");
-        return res.json();
-      })
-      .then((data) => {
-        setGraph(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setGraph(null);
-        setLoading(false);
-      });
+        const data = await res.json();
+        if (isMounted) {
+          setGraph(data);
+          setLoading(false);
+        }
+      } catch {
+        if (isMounted) {
+          setGraph(null);
+          setLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      isMounted = false;
+    };
   }, [userId]);
 
   // Simplified force-directed layout (SVG positions)

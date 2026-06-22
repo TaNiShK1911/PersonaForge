@@ -400,13 +400,13 @@ export function BanditOptimizerView() {
                   background: `${meta.color}11`,
                   borderColor: `${meta.color}44`,
                 }}
-                title={`Round ${h.round}: ${meta.label} → ${h.reward ? "✓" : "✗"}`}
+                title={`Round ${h.round}: ${meta.label} → ${h.reward ? "Success" : "Fail"}`}
               >
                 <span style={{ color: meta.color }}>
                   {meta.label.split(" ")[0]}
                 </span>
-                <span className={h.reward ? "text-emerald-400" : "text-muted-foreground"}>
-                  {h.reward ? "✓" : "✗"}
+                <span className={h.reward ? "text-emerald-600 font-medium ml-1" : "text-muted-foreground ml-1"}>
+                  {h.reward ? "Success" : "Fail"}
                 </span>
               </motion.div>
             );
@@ -449,17 +449,17 @@ function StatCard({
   delay: number;
 }) {
   const colors = {
-    violet: "from-violet-500/15 to-violet-500/0 border-violet-500/30",
-    emerald: "from-emerald-500/15 to-emerald-500/0 border-emerald-500/30",
-    rose: "from-rose-500/15 to-rose-500/0 border-rose-500/30",
-    amber: "from-amber-500/15 to-amber-500/0 border-amber-500/30",
+    violet: "bg-white border-violet-200",
+    emerald: "bg-white border-emerald-200",
+    rose: "bg-white border-rose-200",
+    amber: "bg-white border-amber-200",
   };
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className={`rounded-xl p-5 glass border bg-gradient-to-br ${colors[color]}`}
+      className={`card-base p-5 border-t-4 border-t-${color}-500`}
     >
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
         {label}
