@@ -67,10 +67,11 @@ export async function POST(req: NextRequest) {
     const history = await db.banditObservation.findMany({
       orderBy: { round: "asc" },
       take: 1000,
+      include: { variant: true },
     });
     state.history = history.map((h) => ({
       round: h.round,
-      chosen: h.chosenArm as BanditArm,
+      chosen: h.variant.armKey as BanditArm,
       reward: h.reward ? 1 : 0,
       cumulativeReward: h.cumulativeReward,
       cumulativeOptimal: h.cumulativeOptimal,

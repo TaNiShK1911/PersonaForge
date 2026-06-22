@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-const EVENT_META: Record<EventType, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
+const EVENT_META: Record<EventType, { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; color: string; label: string }> = {
   page_view: { icon: Eye, color: "#a78bfa", label: "Page View" },
   scroll_depth: { icon: ScrollText, color: "#22d3ee", label: "Scroll" },
   search: { icon: Search, color: "#34d399", label: "Search" },

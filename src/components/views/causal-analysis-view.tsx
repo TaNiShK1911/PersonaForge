@@ -120,8 +120,6 @@ export function CausalAnalysisView() {
                   stroke="#fff"
                   strokeOpacity={0.5}
                   direction="y"
-                  withTopCap
-                  withBottomCap
                 />
                 <ErrorBar
                   dataKey="ci_upper"
@@ -129,8 +127,6 @@ export function CausalAnalysisView() {
                   stroke="#fff"
                   strokeOpacity={0.5}
                   direction="y"
-                  withTopCap
-                  withBottomCap
                 />
               </Bar>
             </BarChart>

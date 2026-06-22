@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+// @ts-ignore
 import { io } from 'socket.io-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

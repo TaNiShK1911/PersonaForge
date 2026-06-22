@@ -6,11 +6,11 @@
 // 3 demo auth users, 1000 sample users (optional).
 // ============================================================
 
-import { db } from "../src/lib/db";
-import { generateDataset } from "../src/lib/data/generator";
-import { buildPersonas } from "../src/lib/ml/persona";
-import { PERSONA_META, PERSONA_KINDS, TREATMENTS, TREATMENT_META, BANDIT_ARMS, ARM_META } from "../src/lib/types";
-import { runBanditEpisodes } from "../src/lib/ml/bandit";
+import { db } from "../../src/lib/db";
+import { generateDataset } from "../../src/lib/data/generator";
+import { buildPersonas } from "../../src/lib/ml/persona";
+import { PERSONA_META, PERSONA_KINDS, TREATMENTS, TREATMENT_META, BANDIT_ARMS, ARM_META } from "../../src/lib/types";
+import { runBanditEpisodes } from "../../src/lib/ml/bandit";
 
 async function seed() {
   console.log("🌱 Seeding PersonaForge database…");
