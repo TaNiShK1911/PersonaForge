@@ -156,7 +156,7 @@ export function UserExplorerView() {
                   label="Consent" 
                   value={(selectedUser.consentLevel ?? "full").toUpperCase()} 
                   color={
-                    selectedUser.consentLevel === "none" ? "red" :
+                    selectedUser.consentLevel === "none" ? "rose" :
                     selectedUser.consentLevel === "basic" ? "amber" : 
                     "emerald"
                   } 
