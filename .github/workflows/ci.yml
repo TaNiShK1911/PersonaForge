@@ -32,7 +32,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run db:generate
       - run: bun run lint
 
@@ -44,7 +44,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run db:generate
       - run: bun run typecheck
 
@@ -57,7 +57,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run db:push
       - run: bun test src/lib/tests/unit/ --coverage
       - name: Upload coverage
@@ -76,7 +76,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run db:push
       - run: bun test src/lib/tests/integration/
 
@@ -89,7 +89,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run db:push
       - run: bun run build
         env:
@@ -108,7 +108,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - name: bun audit (high severity)
         run: bun audit || true
       - name: Check for secrets in code
@@ -126,7 +126,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - name: Ensure Playwright is installed
         run: bun add -d @playwright/test playwright || true
       - run: bunx playwright install --with-deps chromium
