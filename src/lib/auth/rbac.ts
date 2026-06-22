@@ -24,6 +24,8 @@ export type Permission =
   | "events:write"
   | "analytics:read"
   | "analytics:write"
+  | "identity:read"
+  | "identity:write"
   | "admin:read"
   | "admin:write";
 
@@ -37,6 +39,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "bandit:read", "bandit:write",
     "events:read", "events:write",
     "analytics:read", "analytics:write",
+    "identity:read", "identity:write",
     "admin:read", "admin:write",
   ],
   analyst: [
@@ -48,6 +51,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "bandit:read", "bandit:write",
     "events:read", "events:write",
     "analytics:read",
+    "identity:read",
   ],
   viewer: [
     "users:read",
@@ -58,6 +62,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "bandit:read",
     "events:read",
     "analytics:read",
+    "identity:read",
   ],
 };
 

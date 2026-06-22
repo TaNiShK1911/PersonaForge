@@ -31,7 +31,8 @@ export type ViewId =
   | "counterfactual"
   | "personalization"
   | "explainability"
-  | "bandit";
+  | "bandit"
+  | "identity";
 
 interface PersonaForgeState {
   // data

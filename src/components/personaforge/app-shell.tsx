@@ -13,6 +13,7 @@ import {
   Zap,
   Activity,
   Github,
+  Network,
 } from "lucide-react";
 import { useForgeStore, ViewId } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,13 @@ const NAV: {
     icon: Dices,
     hint: "Thompson Sampling",
     accent: "from-sky-500/20 to-sky-500/0",
+  },
+  {
+    id: "identity",
+    label: "Identity Resolution",
+    icon: Network,
+    hint: "Cross-channel stitching",
+    accent: "from-orange-500/20 to-orange-500/0",
   },
 ];
 
@@ -202,7 +210,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </span>
                 <span className="text-xs text-foreground">Healthy</span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">
+              <div className="text-[10px] text-muted-foreground mt-1" suppressHydrationWarning>
                 Updated {new Date(dataset.generatedAt).toLocaleTimeString()}
               </div>
             </div>

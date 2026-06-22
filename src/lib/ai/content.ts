@@ -14,6 +14,7 @@ import {
 } from "@/lib/types";
 import { CausalEffect } from "@/lib/types";
 import { runCounterfactual } from "@/lib/ml/counterfactual";
+import { applyConsentGate, explainConsentLimitations, type ConsentLevel } from "@/lib/consent/gate";
 
 const PRODUCT_NAMES = [
   "Aurora Wireless Headphones",
@@ -126,6 +127,56 @@ export function generatePersonalization(
   user: User,
   persona: Persona
 ): PersonalizationOutput {
+  // Apply consent gate
+  const consentLevel = (user.consentLevel ?? "full") as ConsentLevel;
+  const consentGate = applyConsentGate(user, [
+    "persona_targeting",
+    "individual_causal_targeting",
+    "ai_content_generation",
+    "behavioral_event_tracking",
+  ]);
+
+  // If no consent, return generic contextual content
+  if (consentLevel === "none") {
+    return {
+      persona: persona.kind,
+      headline: "Discover Our Latest Collection",
+      emailSubject: "New Arrivals This Week",
+      emailBody: `Hi there,\n\nCheck out our newest products, curated for everyone. Browse hundreds of items across all categories.\n\n— The PersonaForge Team`,
+      adCopy: "Shop new arrivals — something for everyone.",
+      pushNotification: "New products just dropped — explore now",
+      productRanking: PRODUCT_NAMES.slice(0, 5).map((name, i) => ({
+        productId: name,
+        score: 0.5,
+        reason: "Featured product",
+      })),
+      cta: "Shop Now",
+    };
+  }
+
+  // If basic consent, use persona-level targeting only (no individual profiling)
+  if (consentLevel === "basic") {
+    const template = COPY_TEMPLATES[persona.kind];
+    // Generic persona-level product ranking (not personalized to individual)
+    const productRanking = PRODUCT_NAMES.slice(0, 5).map((name, i) => ({
+      productId: name,
+      score: 0.6 + i * 0.05,
+      reason: `Popular with ${PERSONA_META[persona.kind].name} segment`,
+    }));
+
+    return {
+      persona: persona.kind,
+      headline: template.headline,
+      emailSubject: template.emailSubject,
+      emailBody: template.emailBody.replace("{name}", "there"), // No individual name personalization
+      adCopy: template.adCopy,
+      pushNotification: template.pushNotification,
+      productRanking,
+      cta: template.cta,
+    };
+  }
+
+  // Full consent: individual-level personalization
   const template = COPY_TEMPLATES[persona.kind];
   const seed =
     user.id.charCodeAt(2) * 7 + user.id.charCodeAt(3) * 13 + user.features.priceSensitivity * 100;
@@ -165,7 +216,7 @@ export function generatePersonalization(
     .slice(0, 5)
     .map((p, i) => ({
       ...p,
-      productId: PRODUCT_NAMES[Math.abs(seed + i * 7) % PRODUCT_NAMES.length],
+      productId: `${PRODUCT_NAMES[Math.abs(seed + i * 7) % PRODUCT_NAMES.length]}_${i}`,
     }));
 
   return {
@@ -188,6 +239,13 @@ export function generateExplanation(
   effects: CausalEffect[],
   users: User[]
 ): Explanation {
+  // Check consent level
+  const consentLevel = (user.consentLevel ?? "full") as ConsentLevel;
+  const consentExplanation = explainConsentLimitations(user, [
+    "individual_causal_targeting",
+    "counterfactual_simulation",
+  ]);
+
   // Find the user's strongest causal drivers (top 2)
   const userResp: Record<TreatmentVariable, number> = {
     discount: user.features.discountResponse,
@@ -205,13 +263,19 @@ export function generateExplanation(
     .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
     .slice(0, 2);
 
-  // Run counterfactual to get the "without treatment" delta
-  const cf = runCounterfactual(user, users);
-  const counterfactualDelta =
-    ((cf.baseline.conversionProbability -
-      cf.scenarios.find((s) => s.id === "no_urgency")!.conversionProbability) /
-      cf.baseline.conversionProbability) *
-    100;
+  // Run counterfactual to get the "without treatment" delta (only if full consent)
+  let counterfactualDelta = 0;
+  let counterfactualPct = 0;
+  
+  if (consentLevel === "full") {
+    const cf = runCounterfactual(user, users);
+    counterfactualDelta =
+      ((cf.baseline.conversionProbability -
+        cf.scenarios.find((s) => s.id === "no_urgency")!.conversionProbability) /
+        cf.baseline.conversionProbability) *
+      100;
+    counterfactualPct = Math.round(Math.abs(counterfactualDelta));
+  }
 
   // Pick a recommended product (top from personalization)
   const rec = generatePersonalization(user, persona);
@@ -227,9 +291,26 @@ export function generateExplanation(
     Math.abs(driver1.ate) * 100 * 2.5 + Math.abs(driver2?.ate ?? 0) * 100 * 1.2
   );
 
-  const counterfactualPct = Math.round(Math.abs(counterfactualDelta));
+  // Adjust explanation based on consent level
+  let fullText = "";
+  
+  if (consentLevel === "none") {
+    fullText = `This recommendation was selected using contextual targeting only (no personalization).
 
-  const fullText = `This recommendation was selected because:
+${consentExplanation}
+
+The product "${topProduct.productId}" was featured because: ${topProduct.reason}.`;
+  } else if (consentLevel === "basic") {
+    fullText = `This recommendation was selected because:
+
+• User matches the "${PERSONA_META[persona.kind].name}" persona segment — ${PERSONA_META[persona.kind].tagline}
+• ${consentExplanation}
+
+The model ranked "${topProduct.productId}" with score ${topProduct.score.toFixed(2)} because: ${topProduct.reason}.
+
+Note: Individual causal targeting and counterfactual simulation were withheld per user consent preference.`;
+  } else {
+    fullText = `This recommendation was selected because:
 
 • User matches the "${PERSONA_META[persona.kind].name}" persona (${(persona.confidence * 100).toFixed(0)}% confidence) — ${PERSONA_META[persona.kind].tagline}
 • User responds strongly to ${driver1.factor.replace("_", " ")} (responsiveness: ${(userResp[driver1.factor] * 100).toFixed(0)}%; observed ATE: +${(driver1.ate * 100).toFixed(1)}pp)
@@ -238,6 +319,7 @@ export function generateExplanation(
 • Counterfactual analysis predicts ${counterfactualPct}% lower conversion without this messaging
 
 The model ranked "${topProduct.productId}" with score ${topProduct.score.toFixed(2)} because: ${topProduct.reason}.`;
+  }
 
   return {
     userId: user.id,
@@ -245,7 +327,9 @@ The model ranked "${topProduct.productId}" with score ${topProduct.score.toFixed
     recommendation: topProduct.productId,
     personaDriver,
     causalDrivers: drivers.map((d) => ({ factor: d.factor, impact: d.impact })),
-    counterfactualNote: `Removing the primary treatment would reduce conversion probability by an estimated ${counterfactualPct}%.`,
+    counterfactualNote: consentLevel === "full" 
+      ? `Removing the primary treatment would reduce conversion probability by an estimated ${counterfactualPct}%.`
+      : "Counterfactual analysis not available at current consent level.",
     similarCampaignUplift,
     confidence: persona.confidence,
     fullText,

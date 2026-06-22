@@ -289,3 +289,137 @@ CI/CD is handled by GitHub actions including Linting, Typecheck, Unit/Integratio
 <div align="center">
   <p>Built for <b>PersonaForge</b>. Licensed under MIT.</p>
 </div>
+
+
+---
+
+## 🚀 Quick Start (Updated for Hackathon Demo)
+
+```powershell
+# Windows PowerShell - Automated setup
+.\setup.ps1
+
+# Start development server
+bun run dev
+
+# Open browser
+http://localhost:3000
+```
+
+**Gemini API Key Configured:** ✅ Ready to use  
+**Redis:** Optional (in-memory fallback enabled)
+
+---
+
+## ⭐ NEW: Hackathon Features (Phase 1-3)
+
+### 1. Identity Resolution Simulator
+- Cross-channel identifier stitching (email, device, cookie, loyalty ID)
+- Deterministic + probabilistic matching with logistic regression
+- Visual graph showing fragmented → unified profile transformation
+- **Navigate to:** Identity Resolution tab (9th view)
+
+### 2. Consent-Aware Personalization
+- Three-tier model: NONE / BASIC / FULL
+- Explicit capability gating per tier
+- Explainability states what was withheld and why
+- **See:** Consent badges in User Explorer, impact in Explainability view
+
+### 3. Personalization Fatigue Model
+- Per-user exposure tracking with exponential decay
+- Thompson Sampling bandit accounts for fatigue
+- Automatic treatment rotation to avoid over-exposure
+- **Implementation:** `src/lib/ml/bandit-fatigue.ts`
+
+---
+
+## 📚 Documentation
+
+- **[SETUP.md](SETUP.md)** — Detailed installation guide
+- **[WINDOWS-SETUP.md](WINDOWS-SETUP.md)** — Windows-specific troubleshooting
+- **[DEMO-GUIDE.md](DEMO-GUIDE.md)** — 8-minute judge presentation script
+- **[.env.example](.env.example)** — Environment variables reference
+
+---
+
+## 🎯 Judge-Facing Pitch
+
+> "Most hackathon teams are building another AI email generator. We built the identity resolution and consent layer underneath it — because that's what Epsilon's COREid and PeopleCloud products actually exist to solve."
+
+### Why This Wins
+1. ✅ Addresses **real industry pain points**: identity fragmentation (54% of impressions), consent-first targeting, anti-spam fatigue
+2. ✅ **Production-grade engineering**: RBAC, rate limiting, security headers, test coverage
+3. ✅ **From-scratch math**: All algorithms hand-implemented (no ML libraries)
+4. ✅ **Epsilon alignment**: Identity resolution = COREid, Consent = PeopleCloud
+
+---
+
+## 🏆 Demo Flow (8 minutes)
+
+1. **Identity Resolution** (2m) → Show fragmented signals merge into one profile
+2. **Consent Personalization** (2m) → Compare NONE vs FULL consent output
+3. **Causal Analysis** (1.5m) → ATE estimates and causal graph
+4. **Counterfactual Lab** (1m) → What-if scenarios with uplift %
+5. **Bandit Optimizer** (1m) → Thompson Sampling in action
+6. **Closing** (30s) → Differentiators recap
+
+**Full script:** [DEMO-GUIDE.md](DEMO-GUIDE.md)
+
+---
+
+## 📊 Stats
+
+- **16 database entities** (User, Persona, IdentitySignal, IdentityMatch, etc.)
+- **1000 synthetic users** with 12,000+ events
+- **2-5 identity signals** per user across 2-3 channels
+- **3 consent tiers** with realistic distribution (20/35/45%)
+- **4 causal methods** (PSM, IPW, doubly-robust, comparison)
+- **Zero ML libraries** — all math implemented from scratch
+
+---
+
+## 🔧 Troubleshooting
+
+### API Key Not Working
+```powershell
+# Check .env file
+Get-Content .env | Select-String "GOOGLE_API_KEY"
+```
+
+### Database Issues
+```powershell
+# Reset everything
+bun run db:reset
+$env:SEED_SAMPLE_USERS="true"
+bun run db:seed
+```
+
+### PowerShell Script Blocked
+```powershell
+# Enable script execution (run as Administrator)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**Full troubleshooting:** [WINDOWS-SETUP.md](WINDOWS-SETUP.md)
+
+---
+
+## 🧪 Testing
+
+```powershell
+# All tests
+bun test src/lib/tests/unit
+
+# Specific features
+bun test src/lib/tests/unit/identity-resolution.test.ts
+bun test src/lib/tests/unit/consent-gate.test.ts
+bun test src/lib/tests/unit/bandit-fatigue.test.ts
+
+# Type check
+bun run typecheck
+```
+
+---
+
+**Built for Epsilon TeXpedition 2026 Hackathon** 🎯  
+**Theme:** "How can marketers leverage AI to hyper-personalize at scale?"

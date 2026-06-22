@@ -152,6 +152,15 @@ export function UserExplorerView() {
                 {selectedUser.converted && (
                   <StatPill label="Status" value="Converted" color="emerald" />
                 )}
+                <StatPill 
+                  label="Consent" 
+                  value={(selectedUser.consentLevel ?? "full").toUpperCase()} 
+                  color={
+                    selectedUser.consentLevel === "none" ? "red" :
+                    selectedUser.consentLevel === "basic" ? "amber" : 
+                    "emerald"
+                  } 
+                />
               </div>
               <div className="text-xs text-muted-foreground mt-1">
                 {selectedUser.email} · {selectedUser.sessions} sessions ·{" "}

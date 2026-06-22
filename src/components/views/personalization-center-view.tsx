@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useForgeStore } from "@/lib/store";
 import { PERSONA_META, PERSONA_KINDS, PersonaKind } from "@/lib/types";
@@ -14,8 +14,11 @@ import {
   Sparkles,
   ShoppingBag,
   ArrowRight,
+  Bot,
+  AlertTriangle,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 const PRESET_USERS: Record<PersonaKind, string | null> = {
   price_sensitive: null,
@@ -29,6 +32,21 @@ const PRESET_USERS: Record<PersonaKind, string | null> = {
 export function PersonalizationCenterView() {
   const dataset = useForgeStore((s) => s.dataset);
   const personas = useForgeStore((s) => s.personas);
+
+  // Check if AI provider is available
+  const [providerStatus, setProviderStatus] = useState<{ provider: string; available: boolean } | null>(null);
+  
+  useEffect(() => {
+    // Check provider availability
+    fetch("/api/personalize", { method: "HEAD" })
+      .then((res) => {
+        const provider = res.headers.get("x-provider") || "template";
+        setProviderStatus({ provider, available: provider !== "template" });
+      })
+      .catch(() => {
+        setProviderStatus({ provider: "template", available: false });
+      });
+  }, []);
 
   // For each persona, find one representative user (first user of that persona)
   const representatives = useMemo(() => {
@@ -56,6 +74,26 @@ export function PersonalizationCenterView() {
       <GlassPanel
         title="Personalization Engine"
         subtitle="Persona-aware content generation across email, ads, push, and product ranking"
+        right={
+          providerStatus && (
+            <Badge
+              variant={providerStatus.available ? "default" : "outline"}
+              className={`flex items-center gap-1.5 ${
+                providerStatus.available
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+                  : "bg-amber-500/15 text-amber-300 border-amber-500/40"
+              }`}
+            >
+              {providerStatus.available ? (
+                <Bot className="w-3 h-3" />
+              ) : (
+                <AlertTriangle className="w-3 h-3" />
+              )}
+              Provider: {providerStatus.provider}
+              {!providerStatus.available && " (no API key configured)"}
+            </Badge>
+          )
+        }
       >
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           {PERSONA_KINDS.map((k) => {
@@ -281,9 +319,9 @@ export function PersonalizationCenterView() {
             {PERSONA_KINDS.map((k) => {
               const m = PERSONA_META[k];
               const rep = representatives[k];
-              if (!rep) return null;
+              if (!rep) return <div key={`${k}-no-rep`} />;
               const persona = personas.find((p) => p.kind === k);
-              if (!persona) return null;
+              if (!persona) return <div key={`${k}-no-persona`} />;
               const out = generatePersonalization(rep, persona);
               return (
                 <div

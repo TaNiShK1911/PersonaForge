@@ -1,4 +1,13 @@
-// PersonaForge — Counterfactual Simulator
+// ============================================================
+// PersonaForge — Counterfactual Simulator (V1 - DEPRECATED)
+// ============================================================
+// DEPRECATED: This is the original counterfactual implementation.
+// Production API routes now use counterfactual-v2.ts which supports
+// multi-treatment simulation with continuous parameters.
+//
+// This file is kept for backwards compatibility with existing imports
+// in src/lib/ai/content.ts. DO NOT extend this file further.
+//
 // "What if this user had seen a discount?"
 // "What if urgency messaging was removed?"
 //

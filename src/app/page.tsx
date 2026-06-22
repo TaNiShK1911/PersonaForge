@@ -10,6 +10,7 @@ import { CounterfactualLabView } from "@/components/views/counterfactual-lab-vie
 import { PersonalizationCenterView } from "@/components/views/personalization-center-view";
 import { ExplainabilityView } from "@/components/views/explainability-view";
 import { BanditOptimizerView } from "@/components/views/bandit-optimizer-view";
+import { IdentityResolutionView } from "@/components/views/identity-resolution-view";
 
 export default function Home() {
   const currentView = useForgeStore((s) => s.currentView);
@@ -24,6 +25,7 @@ export default function Home() {
       {currentView === "personalization" && <PersonalizationCenterView />}
       {currentView === "explainability" && <ExplainabilityView />}
       {currentView === "bandit" && <BanditOptimizerView />}
+      {currentView === "identity" && <IdentityResolutionView />}
     </AppShell>
   );
 }

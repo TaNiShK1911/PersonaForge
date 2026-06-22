@@ -31,6 +31,24 @@ export async function getSession(): Promise<AuthSession | null> {
 export async function requirePermission(
   permission: Permission
 ): Promise<{ session: AuthSession } | NextResponse> {
+  console.log('[AUTH] requirePermission called, NODE_ENV:', process.env.NODE_ENV);
+  
+  // Development mode bypass - allow all permissions
+  if (process.env.NODE_ENV === "development") {
+    console.log('[AUTH] Development mode detected - bypassing auth');
+    const devSession: AuthSession = {
+      user: {
+        id: "dev-user",
+        email: "dev@personaforge.local",
+        name: "Development User",
+        image: null,
+        role: "admin",
+      },
+    };
+    return { session: devSession };
+  }
+
+  console.log('[AUTH] Production mode - checking session');
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

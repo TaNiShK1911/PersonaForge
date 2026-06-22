@@ -28,6 +28,8 @@ model User {
   converted    Boolean  @default(false)
   revenue      Float    @default(0)
   sessions     Int      @default(0)
+  consentLevel String   @default("full")                 // none | basic | full
+  consentTimestamp DateTime @default(now())
   deletedAt    DateTime?                                 // soft delete
 
   createdAt    DateTime @default(now())
@@ -38,9 +40,11 @@ model User {
   userSessions UserSession[]
   recommendations Recommendation[]
   experiments  CounterfactualExperiment[]
+  identitySignals IdentitySignal[]
 
   @@index([personaKind])
   @@index([converted])
+  @@index([consentLevel])
   @@index([createdAt])
   @@index([deletedAt])
 }
@@ -399,3 +403,53 @@ model AuthUser {
   @@index([role])
   @@index([email])
 }
+
+// ----------------------------------------------------------
+// 15. IdentitySignal — fragmented identifier (cross-channel)
+// ----------------------------------------------------------
+model IdentitySignal {
+  id            String    @id @default(cuid())
+  userId        String                                     // FK to User
+  signalType    String                                     // email | device_id | cookie_id | loyalty_id | phone_hash
+  signalValue   String                                     // can be hashed/masked
+  channel       String                                     // web | app | email | ctv | instore
+  firstSeenAt   DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  confidence    Float?                                     // null until resolved
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchesA      IdentityMatch[] @relation("SignalA")
+  matchesB      IdentityMatch[] @relation("SignalB")
+
+  @@index([userId])
+  @@index([signalType])
+  @@index([channel])
+  @@index([signalValue])
+  @@unique([userId, signalType, signalValue, channel])
+}
+
+// ----------------------------------------------------------
+// 16. IdentityMatch — probabilistic match between signals
+// ----------------------------------------------------------
+model IdentityMatch {
+  id            String    @id @default(cuid())
+  signalAId     String                                     // FK to IdentitySignal
+  signalBId     String                                     // FK to IdentitySignal
+  matchScore    Float                                      // 0-1
+  method        String                                     // deterministic | probabilistic
+  matchedAt     DateTime  @default(now())
+
+  createdAt     DateTime  @default(now())
+
+  signalA       IdentitySignal @relation("SignalA", fields: [signalAId], references: [id], onDelete: Cascade)
+  signalB       IdentitySignal @relation("SignalB", fields: [signalBId], references: [id], onDelete: Cascade)
+
+  @@index([signalAId])
+  @@index([signalBId])
+  @@index([matchScore])
+  @@unique([signalAId, signalBId])
+}
+
