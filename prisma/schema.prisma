@@ -11,8 +11,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ----------------------------------------------------------
@@ -451,5 +452,78 @@ model IdentityMatch {
   @@index([signalBId])
   @@index([matchScore])
   @@unique([signalAId, signalBId])
+}
+
+// ----------------------------------------------------------
+// 17. ChatConversation — RAG chatbot conversation thread
+// ----------------------------------------------------------
+model ChatConversation {
+  id          String        @id @default(cuid())
+  authUserId  String?
+  title       String?
+  context     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  messages    ChatMessage[]
+
+  @@index([authUserId])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------
+// 18. ChatMessage — individual message in a conversation
+// ----------------------------------------------------------
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  sources        String?
+  tokensUsed     Int      @default(0)
+  latencyMs      Int      @default(0)
+  provider       String?
+  agentTrace     String?
+  createdAt      DateTime @default(now())
+
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------
+// 19. AgentRun — multi-agent orchestration run record
+// ----------------------------------------------------------
+model AgentRun {
+  id             String   @id @default(cuid())
+  conversationId String?
+  triggeredBy    String
+  status         String   @default("running")
+  input          String
+  output         String?
+  trace          String?
+  agentsUsed     String
+  totalTokens    Int      @default(0)
+  latencyMs      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([conversationId])
+}
+
+// ----------------------------------------------------------
+// 20. TelegramSubscription — Telegram bot persona subscription
+// ----------------------------------------------------------
+model TelegramSubscription {
+  id          String   @id @default(cuid())
+  chatId      String
+  personaKind String
+  createdAt   DateTime @default(now())
+
+  @@unique([chatId, personaKind])
+  @@index([personaKind])
+  @@index([chatId])
 }
 

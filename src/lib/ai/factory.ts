@@ -8,6 +8,7 @@
 import { ClaudeProvider } from "./providers/claude";
 import { GeminiProvider } from "./providers/gemini";
 import { OpenAIProvider } from "./providers/openai";
+import { GroqProvider } from "./providers/groq";
 import { TemplateProvider } from "./providers/template";
 import { ContentProvider, ProviderChain } from "./provider";
 import { cache } from "@/lib/cache/redis";
@@ -19,6 +20,7 @@ export function getProviderChain(): ProviderChain {
   const providers: ContentProvider[] = [
     new ClaudeProvider(),
     new GeminiProvider(),
+    new GroqProvider(),
     new OpenAIProvider(),
     new TemplateProvider(), // always-available fallback
   ];

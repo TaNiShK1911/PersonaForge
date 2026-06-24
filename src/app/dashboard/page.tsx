@@ -13,6 +13,10 @@ import { PersonalizationCenterView } from "@/components/views/personalization-ce
 import { ExplainabilityView } from "@/components/views/explainability-view";
 import { BanditOptimizerView } from "@/components/views/bandit-optimizer-view";
 import { IdentityResolutionView } from "@/components/views/identity-resolution-view";
+import { AiCopilotView } from "@/components/views/ai-copilot-view";
+import { AgentConsoleView } from "@/components/views/agent-console-view";
+import { LiveDemoMonitorView } from "@/components/views/live-demo-monitor-view";
+import { TelegramFeedView } from "@/components/views/telegram-feed-view";
 
 export default function Dashboard() {
   const { data: session, status } = useSession({
@@ -39,6 +43,10 @@ export default function Dashboard() {
       {currentView === "explainability" && <ExplainabilityView />}
       {currentView === "bandit" && <BanditOptimizerView />}
       {currentView === "identity" && <IdentityResolutionView />}
+      {currentView === "copilot" && <AiCopilotView />}
+      {currentView === "agents" && <AgentConsoleView />}
+      {currentView === "liveDemo" && <LiveDemoMonitorView />}
+      {currentView === "telegram" && <TelegramFeedView />}
     </AppShell>
   );
 }

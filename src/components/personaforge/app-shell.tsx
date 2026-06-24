@@ -15,6 +15,10 @@ import {
   Activity,
   Github,
   Network,
+  Bot,
+  Cpu,
+  Radio,
+  Send,
 } from "lucide-react";
 import { useForgeStore, ViewId } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -89,6 +93,34 @@ const NAV: {
     icon: Network,
     hint: "Cross-channel stitching",
     accent: "from-orange-500/20 to-orange-500/0",
+  },
+  {
+    id: "copilot",
+    label: "AI Copilot",
+    icon: Bot,
+    hint: "RAG-powered chat",
+    accent: "from-violet-500/20 to-fuchsia-500/0",
+  },
+  {
+    id: "agents",
+    label: "Agent Console",
+    icon: Cpu,
+    hint: "Multi-agent system",
+    accent: "from-indigo-500/20 to-indigo-500/0",
+  },
+  {
+    id: "liveDemo",
+    label: "Live Demo Monitor",
+    icon: Radio,
+    hint: "Real-time events",
+    accent: "from-emerald-500/20 to-emerald-500/0",
+  },
+  {
+    id: "telegram",
+    label: "Telegram Feed",
+    icon: Send,
+    hint: "Push persona ads",
+    accent: "from-blue-500/20 to-blue-500/0",
   },
 ];
 

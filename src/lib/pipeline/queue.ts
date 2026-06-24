@@ -24,6 +24,9 @@ import {
   handleIngestBatch,
   handleSnapshotAnalytics,
   handleUpdatePersona,
+  handleMultiAgentAnalyze,
+  handleTelegramPush,
+  handleEmbedRefresh,
 } from "./bullmq";
 
 // ---------- In-process queue (dev fallback) ----------
@@ -102,6 +105,9 @@ inProcessQueue.register("ingest-event", handleIngestEvent);
 inProcessQueue.register("ingest-batch", handleIngestBatch);
 inProcessQueue.register("snapshot-analytics", handleSnapshotAnalytics);
 inProcessQueue.register("update-persona", handleUpdatePersona);
+inProcessQueue.register("multi-agent-analyze", handleMultiAgentAnalyze);
+inProcessQueue.register("telegram-push", handleTelegramPush);
+inProcessQueue.register("embed-refresh", handleEmbedRefresh);
 
 // ---------- Public API ----------
 

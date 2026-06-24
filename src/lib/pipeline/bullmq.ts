@@ -177,3 +177,98 @@ export async function handleUpdatePersona(): Promise<void> {
   await cache.delPattern("persona:*");
   pipelineLogger.info("persona_cache_invalidated");
 }
+
+export async function handleMultiAgentAnalyze(payload: any): Promise<void> {
+  try {
+    const { runAgentAnalysis } = await import("@/lib/agents/supervisor-agent");
+    await runAgentAnalysis({
+      userId: payload.userId,
+      question: payload.question,
+      goal: payload.goal ?? "Background agent analysis",
+      conversationId: payload.conversationId,
+      triggeredBy: payload.triggeredBy ?? "background-job",
+    });
+    pipelineLogger.info("multi_agent_analysis_completed", {
+      userId: payload.userId,
+    });
+  } catch (err) {
+    pipelineLogger.error("multi_agent_analysis_failed", {
+      error: (err as Error).message,
+    });
+    throw err;
+  }
+}
+
+export async function handleTelegramPush(payload: any): Promise<void> {
+  const { personaKind, headline, cta, generatedContent, reasoning } = payload;
+
+  // Find subscribed chats
+  const subscriptions = await db.telegramSubscription.findMany({
+    where: { personaKind },
+  });
+
+  if (subscriptions.length === 0) {
+    pipelineLogger.info("telegram_push_no_subscribers", { personaKind });
+    return;
+  }
+
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    pipelineLogger.warn("telegram_push_no_token", {
+      subscriptions: subscriptions.length,
+    });
+    return;
+  }
+
+  const message = [
+    `🎯 *PersonaForge Ad*`,
+    `━━━━━━━━━━━━━━━━━━`,
+    ``,
+    `📣 *${headline}*`,
+    generatedContent ? `\n${generatedContent}` : "",
+    cta ? `\n👉 ${cta}` : "",
+    ``,
+    `━━━━━━━━━━━━━━━━━━`,
+    `🧬 Persona: \`${personaKind}\``,
+    reasoning ? `💡 ${reasoning}` : "",
+    `⚡ _Powered by PersonaForge_`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  for (const sub of subscriptions) {
+    try {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: sub.chatId,
+          text: message,
+          parse_mode: "Markdown",
+        }),
+      });
+    } catch (err) {
+      pipelineLogger.error("telegram_push_delivery_failed", {
+        chatId: sub.chatId,
+        error: (err as Error).message,
+      });
+    }
+  }
+
+  pipelineLogger.info("telegram_push_completed", {
+    personaKind,
+    delivered: subscriptions.length,
+  });
+}
+
+export async function handleEmbedRefresh(): Promise<void> {
+  try {
+    const { indexAll } = await import("@/lib/rag/indexers");
+    const result = await indexAll();
+    pipelineLogger.info("embed_refresh_completed", result);
+  } catch (err) {
+    pipelineLogger.error("embed_refresh_failed", {
+      error: (err as Error).message,
+    });
+  }
+}

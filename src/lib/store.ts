@@ -32,7 +32,11 @@ export type ViewId =
   | "personalization"
   | "explainability"
   | "bandit"
-  | "identity";
+  | "identity"
+  | "copilot"
+  | "agents"
+  | "liveDemo"
+  | "telegram";
 
 interface PersonaForgeState {
   // data
