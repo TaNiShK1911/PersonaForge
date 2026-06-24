@@ -10,6 +10,7 @@ import { processChat, getConversations, getConversation } from "@/lib/rag/chat";
 import { metrics } from "@/lib/monitoring/metrics";
 import { apiLogger } from "@/lib/monitoring/logger";
 import { applySecurityHeaders } from "@/lib/security/headers";
+import { marked } from "marked";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       NextResponse.json({
         conversationId: result.conversationId,
         messageId: result.messageId,
-        answer: result.answer,
+        answer: await marked.parse(result.answer),
         sources: result.sources,
         suggestAgentRun: result.suggestAgentRun,
         tokensUsed: result.tokensUsed,
@@ -73,11 +74,34 @@ export async function GET(req: NextRequest) {
           NextResponse.json({ error: "Conversation not found" }, { status: 404 })
         );
       }
-      return applySecurityHeaders(NextResponse.json(conversation));
+      
+      const parsedConversation = {
+        ...conversation,
+        messages: await Promise.all(
+          conversation.messages.map(async (m) => ({
+            ...m,
+            content: await marked.parse(m.content),
+          }))
+        ),
+      };
+
+      return applySecurityHeaders(NextResponse.json(parsedConversation));
     }
 
     const conversations = await getConversations(authUserId, limit);
-    return applySecurityHeaders(NextResponse.json({ conversations }));
+    const parsedConversations = await Promise.all(
+      conversations.map(async (c) => ({
+        ...c,
+        messages: await Promise.all(
+          c.messages.map(async (m) => ({
+            ...m,
+            content: await marked.parse(m.content),
+          }))
+        ),
+      }))
+    );
+
+    return applySecurityHeaders(NextResponse.json({ conversations: parsedConversations }));
   } catch (err) {
     apiLogger.error("GET /api/chat failed", {}, err as Error);
     return applySecurityHeaders(

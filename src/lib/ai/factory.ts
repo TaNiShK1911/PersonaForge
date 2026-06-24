@@ -18,9 +18,9 @@ let chain: ProviderChain | null = null;
 export function getProviderChain(): ProviderChain {
   if (chain) return chain;
   const providers: ContentProvider[] = [
+    new GroqProvider(),
     new ClaudeProvider(),
     new GeminiProvider(),
-    new GroqProvider(),
     new OpenAIProvider(),
     new TemplateProvider(), // always-available fallback
   ];

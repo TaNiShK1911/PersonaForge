@@ -27,6 +27,7 @@ function validateApiKey(req: NextRequest): boolean {
   const expectedKey = process.env.DEMO_STORE_API_KEY;
   if (!expectedKey) return true; // No key configured = open in dev
   const providedKey =
+    req.headers.get("x-personaforge-key") ??
     req.headers.get("x-api-key") ??
     req.headers.get("authorization")?.replace("Bearer ", "");
   return providedKey === expectedKey;
@@ -43,108 +44,127 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate required fields
-    const { userId, type, timestamp, properties } = body;
-    if (!userId || !type) {
-      return NextResponse.json(
-        { error: "Missing required fields: userId, type" },
-        { status: 400 }
-      );
-    }
+    // SDK sends batched events as { events: [...] }
+    const incomingEvents = Array.isArray(body.events) ? body.events : [body];
+    let processedCount = 0;
+    let lastUserId = null;
+    let lastPersonaKind = null;
 
-    // Ensure user exists (create if anonymous demo user)
-    let user = await db.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      // Auto-create demo user
-      user = await db.user.create({
+    for (const rawEvent of incomingEvents) {
+      const userId = rawEvent.userId;
+      const type = rawEvent.type ?? rawEvent.event;
+      const timestamp = rawEvent.timestamp ?? rawEvent.ts;
+      const payload = rawEvent.properties ?? rawEvent.payload ?? {};
+
+      if (!userId || !type) {
+        continue; // Skip invalid events in batch
+      }
+
+      // Ensure user exists
+      let user = await db.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        // Auto-create demo user
+        user = await db.user.create({
+          data: {
+            id: userId,
+            name: rawEvent.userName ?? payload.userName ?? `Demo User ${userId.slice(0, 6)}`,
+            email: rawEvent.userEmail ?? payload.userEmail ?? null,
+            personaKind: null,
+            features: JSON.stringify({
+              avgSessionLength: 0,
+              searchCount: 0,
+              productClicks: 0,
+              addToCartCount: 0,
+              wishlistCount: 0,
+              scrollDepthAvg: 0,
+              priceSensitivity: 0.5,
+              brandAffinity: 0.5,
+              urgencyResponse: 0.5,
+              socialProofResponse: 0.5,
+              discountResponse: 0.5,
+              reviewReliance: 0.5,
+              trendAffinity: 0.5,
+              embeddingX: Math.random(),
+              embeddingY: Math.random(),
+            }),
+            converted: false,
+            revenue: 0,
+            sessions: 0,
+            consentLevel: "full",
+          },
+        });
+      }
+
+      const productId = rawEvent.productId ?? payload.productId ?? null;
+      const query = rawEvent.query ?? payload.q ?? payload.query ?? null;
+      const scrollPct = rawEvent.scrollPct ?? payload.depth_pct ?? null;
+      const price = rawEvent.price ?? payload.total ?? payload.price ?? null;
+
+      // Persist the event
+      const event = await db.event.create({
         data: {
-          id: userId,
-          name: body.userName ?? `Demo User ${userId.slice(0, 6)}`,
-          email: body.userEmail ?? null,
-          personaKind: null,
-          features: JSON.stringify({
-            avgSessionLength: 0,
-            searchCount: 0,
-            productClicks: 0,
-            addToCartCount: 0,
-            wishlistCount: 0,
-            scrollDepthAvg: 0,
-            priceSensitivity: 0.5,
-            brandAffinity: 0.5,
-            urgencyResponse: 0.5,
-            socialProofResponse: 0.5,
-            discountResponse: 0.5,
-            reviewReliance: 0.5,
-            trendAffinity: 0.5,
-            embeddingX: Math.random(),
-            embeddingY: Math.random(),
-          }),
-          converted: false,
-          revenue: 0,
-          sessions: 0,
-          consentLevel: "full",
+          userId: user.id,
+          type,
+          timestamp: BigInt(timestamp ?? Date.now()),
+          pageDepth: rawEvent.pageDepth ?? payload.pageDepth ?? 0,
+          productId,
+          query,
+          scrollPct,
+          dwellSec: rawEvent.dwellSec ?? payload.dwellSec ?? null,
+          price,
+          discountSeen: rawEvent.discountSeen ?? payload.discountSeen ?? false,
+          socialProofSeen: rawEvent.socialProofSeen ?? payload.socialProofSeen ?? false,
+          reviewSeen: rawEvent.reviewSeen ?? payload.reviewSeen ?? false,
+          urgencySeen: rawEvent.urgencySeen ?? payload.urgencySeen ?? false,
+          properties: payload ? JSON.stringify(payload) : null,
         },
       });
+
+      // Update user features incrementally
+      await updateUserFeatures(user.id, type, { ...rawEvent, price, scrollPct });
+
+      // Enqueue for background processing
+      try {
+        await pipeline.enqueue("ingest-event", {
+          userId: user.id,
+          type,
+          eventId: event.id,
+          ...rawEvent,
+        });
+      } catch {
+        // Non-fatal
+      }
+
+      processedCount++;
+      lastUserId = user.id;
+      lastPersonaKind = user.personaKind;
     }
 
-    // Persist the event
-    const event = await db.event.create({
-      data: {
-        userId: user.id,
-        type,
-        timestamp: BigInt(timestamp ?? Date.now()),
-        pageDepth: body.pageDepth ?? 0,
-        productId: body.productId ?? null,
-        query: body.query ?? null,
-        scrollPct: body.scrollPct ?? null,
-        dwellSec: body.dwellSec ?? null,
-        price: body.price ?? null,
-        discountSeen: body.discountSeen ?? false,
-        socialProofSeen: body.socialProofSeen ?? false,
-        reviewSeen: body.reviewSeen ?? false,
-        urgencySeen: body.urgencySeen ?? false,
-        properties: properties ? JSON.stringify(properties) : null,
-      },
-    });
-
-    // Update user features incrementally
-    await updateUserFeatures(user.id, type, body);
-
-    // Enqueue for background processing
-    try {
-      await pipeline.enqueue("ingest-event", {
-        userId: user.id,
-        type,
-        eventId: event.id,
-        ...body,
-      });
-    } catch {
-      // Non-fatal: event is already persisted
+    // Trigger persona refresh once for the user if we processed any events
+    if (lastUserId) {
+      try {
+        await pipeline.enqueue("update-persona", { userId: lastUserId });
+      } catch {
+        // Non-fatal
+      }
     }
 
-    // Trigger persona refresh if enough events
-    try {
-      await pipeline.enqueue("update-persona", { userId: user.id });
-    } catch {
-      // Non-fatal
-    }
-
-    metrics.increment("public_events_total");
+    metrics.increment("public_events_total", processedCount);
     metrics.observe("http_request_duration_ms", Date.now() - start);
 
     return NextResponse.json(
       {
         accepted: true,
-        eventId: event.id,
-        userId: user.id,
-        personaKind: user.personaKind,
+        count: processedCount,
+        userId: lastUserId,
+        personaKind: lastPersonaKind,
       },
       {
         status: 202,
         headers: {
           "Access-Control-Allow-Origin": process.env.DEMO_STORE_ORIGIN ?? "*",
           "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, x-api-key, Authorization",
+          "Access-Control-Allow-Headers": "Content-Type, x-api-key, x-personaforge-key, Authorization",
         },
       }
     );
@@ -165,7 +185,7 @@ export async function OPTIONS() {
     headers: {
       "Access-Control-Allow-Origin": process.env.DEMO_STORE_ORIGIN ?? "*",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-api-key, Authorization",
+      "Access-Control-Allow-Headers": "Content-Type, x-api-key, x-personaforge-key, Authorization",
     },
   });
 }

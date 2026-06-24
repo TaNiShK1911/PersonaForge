@@ -22,7 +22,7 @@ export class GroqProvider implements ContentProvider {
 
   constructor() {
     this.apiKey = process.env.GROQ_API_KEY;
-    this.model = process.env.GROQ_MODEL ?? "llama3-8b-8192";
+    this.model = process.env.GROQ_MODEL ?? "llama-3.1-8b-instant";
   }
 
   async isAvailable(): Promise<boolean> {
@@ -41,7 +41,7 @@ export class GroqProvider implements ContentProvider {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: this.model,
+          model: "llama-3.1-8b-instant",
           messages: [
             {
               role: "user",

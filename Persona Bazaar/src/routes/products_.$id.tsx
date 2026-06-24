@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/products/$id")({
+export const Route = createFileRoute("/products_/$id")({
   loader: ({ params }) => {
     const p = getProduct(params.id);
     if (!p) throw notFound();

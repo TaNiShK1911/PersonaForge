@@ -2,7 +2,6 @@
 ## Epsilon TeXpedition | AI Hyper-Personalization at Scale
 ### Integrated 4-Feature Build Plan: RAG Chatbot + Agentic AI + Bazaar Demo Store + Supabase + Telegram Ads
 
-> This version rewrites the earlier plan to fit the **existing PersonaForge website and codebase only**.
 > No separate admin dashboard. No parallel UI. Every new feature is integrated into the current PersonaForge app shell, route system, and data model.
 > The goal is to turn the current synthetic demo into a live, end-to-end hyper-personalization platform.
 

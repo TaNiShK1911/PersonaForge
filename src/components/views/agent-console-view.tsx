@@ -85,14 +85,17 @@ export function AgentConsoleView() {
     }
   }
 
-  async function triggerDemoRun() {
+  async function triggerDemoRun(useLatestVisitor = false) {
     setRunningDemo(true);
     try {
       const res = await fetch("/api/agents/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          goal: "Full demo analysis — classify personas, generate content, optimize treatment, produce insights, and run counterfactual simulation",
+          userId: useLatestVisitor ? "latest" : undefined,
+          goal: useLatestVisitor 
+            ? "Analyze the latest active visitor — classify their persona based on live behavior, generate content, and run a counterfactual" 
+            : "Full demo analysis — classify personas, generate content, optimize treatment, produce insights, and run counterfactual simulation",
           triggeredBy: "agent-console-demo",
         }),
       });
@@ -105,7 +108,7 @@ export function AgentConsoleView() {
           id: data.runId,
           triggeredBy: "agent-console-demo",
           status: data.status,
-          input: { goal: "Full demo analysis" },
+          input: { goal: useLatestVisitor ? "Analyze latest visitor" : "Full demo analysis" },
           output: data.output,
           trace: data.trace,
           agentsUsed: ["SupervisorAgent", "PersonaClassifierAgent", "ContentGeneratorAgent", "BanditOptimizerAgent", "InsightAgent", "CounterfactualAgent"],
@@ -151,7 +154,7 @@ export function AgentConsoleView() {
       {/* Header Actions */}
       <div className="flex items-center gap-3">
         <button
-          onClick={triggerDemoRun}
+          onClick={() => triggerDemoRun(false)}
           disabled={runningDemo}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
@@ -161,6 +164,18 @@ export function AgentConsoleView() {
             <Play className="w-4 h-4" />
           )}
           {runningDemo ? "Running Agent Chain..." : "Run Demo Analysis"}
+        </button>
+        <button
+          onClick={() => triggerDemoRun(true)}
+          disabled={runningDemo}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {runningDemo ? (
+            <RefreshCw className="w-4 h-4 animate-spin" />
+          ) : (
+            <Users className="w-4 h-4" />
+          )}
+          Run for Latest Visitor
         </button>
         <button
           onClick={loadRuns}
@@ -249,8 +264,18 @@ export function AgentConsoleView() {
                         className="px-3 pb-3 text-xs text-muted-foreground overflow-hidden"
                       >
                         <div className="pt-2 border-t">
-                          {entry.output && <p className="whitespace-pre-wrap">{entry.output}</p>}
-                          {entry.error && <p className="text-red-500">{entry.error}</p>}
+                          {entry.output && (
+                            <div 
+                              className="prose prose-xs dark:prose-invert max-w-none break-words [&>p]:mb-1 [&>p:last-child]:mb-0"
+                              dangerouslySetInnerHTML={{ __html: entry.output }}
+                            />
+                          )}
+                          {entry.error && (
+                            <div 
+                              className="prose prose-xs text-red-500 max-w-none break-words mt-2"
+                              dangerouslySetInnerHTML={{ __html: entry.error }}
+                            />
+                          )}
                         </div>
                       </motion.div>
                     )}
@@ -267,9 +292,10 @@ export function AgentConsoleView() {
                 <Zap className="w-3 h-3 text-amber-500" />
                 Final Recommendation
               </div>
-              <div className="text-xs whitespace-pre-wrap max-h-64 overflow-y-auto">
-                {selectedRun.output}
-              </div>
+              <div 
+                className="prose prose-sm dark:prose-invert max-w-none break-words max-h-64 overflow-y-auto [&>p]:mb-2 [&>p:last-child]:mb-0"
+                dangerouslySetInnerHTML={{ __html: selectedRun.output }}
+              />
             </div>
           )}
         </motion.div>

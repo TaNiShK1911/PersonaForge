@@ -137,7 +137,7 @@ export async function fetchUserWithEvents(
         sessions: row.sessions,
         eventCount: row.events.length,
       },
-      events: row.events,
+      events: row.events.map((e: any) => ({ ...e, timestamp: Number(e.timestamp) })),
     };
   } catch (err) {
     throw new DatabaseUnavailableError(
@@ -215,7 +215,7 @@ export async function fetchEvents(opts: {
       }),
       db.event.count({ where }),
     ]);
-    return { events: rows, total };
+    return { events: rows.map(r => ({ ...r, timestamp: Number(r.timestamp) })), total };
   } catch (err) {
     throw new DatabaseUnavailableError(
       `Event query failed: ${(err as Error).message}`,

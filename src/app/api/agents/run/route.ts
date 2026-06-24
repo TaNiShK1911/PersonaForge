@@ -9,6 +9,7 @@ import { runAgentAnalysis } from "@/lib/agents/supervisor-agent";
 import { metrics } from "@/lib/monitoring/metrics";
 import { apiLogger } from "@/lib/monitoring/logger";
 import { applySecurityHeaders } from "@/lib/security/headers";
+import { marked } from "marked";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let actualUserId = userId;
+    if (userId === "latest") {
+      const { db } = await import("@/lib/db");
+      const lastEvent = await db.event.findFirst({
+        orderBy: { timestamp: "desc" },
+        select: { userId: true },
+      });
+      actualUserId = lastEvent?.userId;
+    }
+
     const result = await runAgentAnalysis({
-      userId,
+      userId: actualUserId,
       question,
       goal: goal ?? question ?? "Full analysis",
       conversationId,
@@ -39,12 +50,24 @@ export async function POST(req: NextRequest) {
     metrics.increment("agent_runs_total");
     metrics.observe("agent_run_duration_ms", Date.now() - start);
 
+    const htmlOutput = result.state.finalRecommendation 
+      ? await marked.parse(result.state.finalRecommendation) 
+      : null;
+
+    const htmlTrace = await Promise.all(
+      result.state.trace.map(async (t) => ({
+        ...t,
+        output: t.output ? await marked.parse(t.output) : undefined,
+        error: t.error ? await marked.parse(t.error) : undefined,
+      }))
+    );
+
     return applySecurityHeaders(
       NextResponse.json({
         runId: result.runId,
         status: result.state.errors.length > 0 ? "completed_with_errors" : "completed",
-        output: result.state.finalRecommendation,
-        trace: result.state.trace,
+        output: htmlOutput,
+        trace: htmlTrace,
         personaProfile: result.state.personaProfile,
         generatedContent: result.state.generatedContent,
         treatmentChoice: result.state.treatmentChoice,

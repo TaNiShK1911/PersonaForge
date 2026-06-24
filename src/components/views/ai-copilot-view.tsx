@@ -290,7 +290,10 @@ export function AiCopilotView() {
                       : "bg-muted"
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  <div 
+                    className="prose prose-sm dark:prose-invert max-w-none break-words [&>p]:mb-2 [&>p:last-child]:mb-0 [&>pre]:bg-background/50 [&>pre]:text-xs [&>pre]:p-2 [&>pre]:rounded-md" 
+                    dangerouslySetInnerHTML={{ __html: msg.content }} 
+                  />
 
                   {/* Metadata */}
                   {msg.role === "assistant" && (msg.latencyMs || msg.provider) && (

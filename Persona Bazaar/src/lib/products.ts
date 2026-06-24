@@ -311,6 +311,33 @@ export const PRODUCTS: Product[] = [
     images: [img("photo-1631679706909-1844bbd07221"), img("photo-1586023492125-27b2c045efd7")],
     sizes: SIZES_ONE, colors: [C.ivory, C.camel, C.sage], rating: 4.7, reviewCount: 56, stock: 15, tags: [],
   }),
+  make(24, {
+    name: "Blue Ceramic Nesting Bowls",
+    brand: "Atelier Noir",
+    description: "Handcrafted set of nested ceramic bowls in deep blue. Perfect for serving or display.",
+    priceCents: 8500,
+    categorySlug: "home",
+    images: ["/images/media__1782325676348.jpg"],
+    sizes: SIZES_ONE, colors: [C.ink], rating: 4.8, reviewCount: 42, isNew: true, stock: 10, tags: ["ceramic", "new"],
+  }),
+  make(25, {
+    name: "Wooden Room Divider",
+    brand: "Maison Bazaar",
+    description: "Versatile wooden bookshelf and room divider with rotating panels. Adds structure to any open space.",
+    priceCents: 45000,
+    categorySlug: "home",
+    images: ["/images/media__1782325676408.jpg"],
+    sizes: SIZES_ONE, colors: [C.camel], rating: 4.9, reviewCount: 28, isTrending: true, stock: 5, tags: ["furniture"],
+  }),
+  make(26, {
+    name: "Latte Love Candle",
+    brand: "North Coast",
+    description: "Coffee-scented soy candle designed like a latte. Warm, inviting, and long-lasting.",
+    priceCents: 3500,
+    categorySlug: "home",
+    images: ["/images/media__1782325731776.jpg"],
+    sizes: SIZES_ONE, colors: [C.camel], rating: 4.7, reviewCount: 115, stock: 20, tags: ["candle"],
+  }),
 ];
 
 export const getProduct = (id: string) =>

@@ -168,7 +168,43 @@ async function generateChatResponse(userPrompt: string): Promise<{
   tokensUsed: number;
   provider: string;
 }> {
-  // Try Anthropic first
+  // Try Groq first
+  const groqKey = process.env.GROQ_API_KEY;
+  if (groqKey) {
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${groqKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: userPrompt },
+          ],
+          max_tokens: 2048,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          answer: data.choices[0].message.content,
+          tokensUsed: data.usage?.total_tokens ?? 0,
+          provider: "groq",
+        };
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Groq API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+    } catch (err) {
+      console.warn("[rag/chat] Groq failed, trying next provider:", err);
+    }
+  }
+
+  // Try Anthropic next
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (anthropicKey) {
     try {
@@ -200,7 +236,7 @@ async function generateChatResponse(userPrompt: string): Promise<{
     }
   }
 
-  // Try Google Gemini
+  // Try Google Gemini next
   const googleKey = process.env.GOOGLE_API_KEY;
   if (googleKey) {
     try {
@@ -233,43 +269,7 @@ async function generateChatResponse(userPrompt: string): Promise<{
     }
   }
 
-  // Try Groq
-  const groqKey = process.env.GROQ_API_KEY;
-  if (groqKey) {
-    try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${groqKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "llama3-8b-8192",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          max_tokens: 2048,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          answer: data.choices[0].message.content,
-          tokensUsed: data.usage?.total_tokens ?? 0,
-          provider: "groq",
-        };
-      } else {
-        const errorText = await response.text();
-        throw new Error(`Groq API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-    } catch (err) {
-      console.warn("[rag/chat] Groq failed:", err);
-    }
-  }
-
-  // Try OpenAI
+  // Try OpenAI next
   const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
     try {

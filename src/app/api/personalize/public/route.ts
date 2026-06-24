@@ -84,7 +84,7 @@ export async function OPTIONS() {
     headers: {
       "Access-Control-Allow-Origin": process.env.DEMO_STORE_ORIGIN ?? "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-api-key, Authorization",
+      "Access-Control-Allow-Headers": "Content-Type, x-api-key, x-personaforge-key, Authorization",
     },
   });
 }

@@ -14,7 +14,6 @@ export function ProductCard({ product, eager = false }: { product: Product; eage
     <Link
       to="/products/$id"
       params={{ id: product.id }}
-      onClick={() => track("product_view", { productId: product.id, name: product.name })}
       className="group block"
     >
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-cream">
