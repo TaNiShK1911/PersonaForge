@@ -46,8 +46,7 @@ export const CATEGORIES: Category[] = [
     slug: "home",
     name: "Home",
     tagline: "Objects with intention.",
-    image:
-      "https://images.unsplash.com/photo-1556228724-4b4e94c2b8b1?auto=format&fit=crop&w=1400&q=80",
+    image: "/images/media__1782329581508.jpg",
   },
 ];
 
@@ -275,15 +274,6 @@ export const PRODUCTS: Product[] = [
   }),
 
   // Home (4)
-  make(20, {
-    name: "Stoneware Bowl Set",
-    brand: "Maison Bazaar",
-    description: "Set of four hand-thrown stoneware bowls, glazed in a soft satin finish.",
-    priceCents: 11500,
-    categorySlug: "home",
-    images: [img("photo-1556228724-4b4e94c2b8b1"), img("photo-1556228852-80b6e5eeff06")],
-    sizes: SIZES_ONE, colors: [C.ivory, C.sage], rating: 4.8, reviewCount: 73, isNew: true, stock: 11, tags: ["new", "ceramic"],
-  }),
   make(21, {
     name: "Linen Throw",
     brand: "North Coast",
@@ -292,15 +282,6 @@ export const PRODUCTS: Product[] = [
     categorySlug: "home",
     images: [img("photo-1540574163026-643ea20ade25"), img("photo-1493663284031-b7e3aefcae8e")],
     sizes: SIZES_ONE, colors: [C.ivory, C.stone, C.coral], rating: 4.7, reviewCount: 92, isTrending: true, stock: 7, tags: ["linen"],
-  }),
-  make(22, {
-    name: "Soy Candle, No. 04",
-    brand: "Atelier Noir",
-    description: "Hand-poured soy candle with notes of fig leaf, cedar, and white tea. 60-hour burn.",
-    priceCents: 4800,
-    categorySlug: "home",
-    images: [img("photo-1602874801006-e26c4ef9fb3a"), img("photo-1603006905003-be475563bc59")],
-    sizes: SIZES_ONE, colors: [C.ivory], rating: 4.6, reviewCount: 218, stock: 40, tags: ["bestseller"],
   }),
   make(23, {
     name: "Bouclé Cushion",

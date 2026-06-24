@@ -37,6 +37,10 @@ export async function POST(req: NextRequest) {
       return applySecurityHeaders(
         NextResponse.json({
           pushed: 0,
+          failed: 0,
+          total: 0,
+          results: [],
+          latencyMs: Date.now() - start,
           message: `No Telegram subscriptions for persona: ${personaKind}`,
         })
       );

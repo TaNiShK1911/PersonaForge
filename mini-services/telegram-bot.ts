@@ -13,10 +13,11 @@
 // ============================================================
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PERSONAFORGE_API_URL = process.env.PERSONAFORGE_API_URL ?? "http://localhost:3000";
 const PERSONAFORGE_API_KEY = process.env.PERSONAFORGE_API_KEY ?? "";
+
+import { PrismaClient } from "@prisma/client";
+const db = new PrismaClient();
 
 const PERSONA_OPTIONS = [
   { kind: "price_sensitive", name: "🏷️ Bargain Hunter" },
@@ -53,55 +54,8 @@ async function sendMessage(chatId: string, text: string, options?: { parseMode?:
   return data;
 }
 
-// ---- Supabase helpers (direct REST API) ----
-
-async function supabaseQuery(table: string, params: Record<string, string> = {}) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.warn("[telegram-bot] Supabase not configured");
-    return [];
-  }
-
-  const query = new URLSearchParams(params).toString();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  return response.json();
-}
-
-async function supabaseInsert(table: string, data: Record<string, unknown>) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify(data),
-  });
-
-  return response.json();
-}
-
-async function supabaseDelete(table: string, params: Record<string, string>) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return;
-
-  const query = new URLSearchParams(params).toString();
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
-    method: "DELETE",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-    },
-  });
-}
+// ---- Database helpers ----
+// Removed direct Supabase REST API in favor of Prisma.
 
 // ---- Command handlers ----
 
@@ -139,9 +93,18 @@ Usage: \`/subscribe price_sensitive\``);
   }
 
   try {
-    await supabaseInsert("TelegramSubscription", {
-      chatId: String(chatId),
-      personaKind,
+    await db.telegramSubscription.upsert({
+      where: {
+        chatId_personaKind: {
+          chatId: String(chatId),
+          personaKind,
+        },
+      },
+      update: {},
+      create: {
+        chatId: String(chatId),
+        personaKind,
+      },
     });
     await sendMessage(chatId, `✅ Subscribed to *${valid.name}* ads!\n\nYou'll receive personalized ads when PersonaForge detects relevant persona events.`);
   } catch {
@@ -151,23 +114,25 @@ Usage: \`/subscribe price_sensitive\``);
 
 async function handleUnsubscribe(chatId: string, args: string) {
   if (!args) {
-    await supabaseDelete("TelegramSubscription", { chatId: `eq.${chatId}` });
+    await db.telegramSubscription.deleteMany({ where: { chatId: String(chatId) } });
     await sendMessage(chatId, `✅ Unsubscribed from all persona ads.`);
     return;
   }
 
   const personaKind = args.trim().toLowerCase();
-  await supabaseDelete("TelegramSubscription", {
-    chatId: `eq.${chatId}`,
-    personaKind: `eq.${personaKind}`,
+  await db.telegramSubscription.deleteMany({
+    where: {
+      chatId: String(chatId),
+      personaKind,
+    },
   });
   await sendMessage(chatId, `✅ Unsubscribed from *${personaKind}* ads.`);
 }
 
 async function handleMyStats(chatId: string) {
-  const subs = await supabaseQuery("TelegramSubscription", {
-    chatId: `eq.${chatId}`,
-    select: "personaKind,createdAt",
+  const subs = await db.telegramSubscription.findMany({
+    where: { chatId: String(chatId) },
+    select: { personaKind: true, createdAt: true },
   });
 
   if (!Array.isArray(subs) || subs.length === 0) {
